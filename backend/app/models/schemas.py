@@ -27,10 +27,16 @@ class LineItem(BaseModel):
     bbox: list[float] = Field(min_length=4, max_length=4)
 
 
+class SentenceSegment(BaseModel):
+    line_id: str
+    bbox: list[float] = Field(min_length=4, max_length=4)
+
+
 class SentenceItem(BaseModel):
     id: str
     text: str
     bbox: list[float] = Field(min_length=4, max_length=4)
+    segments: list[SentenceSegment] = Field(default_factory=list)
 
 
 class PageData(BaseModel):
@@ -59,3 +65,14 @@ class WordAudioInfo(BaseModel):
     license_url: str | None = None
     attribution: str | None = None
     cached: bool
+
+
+class SentenceAudioInfo(BaseModel):
+    text: str
+    synthetic: bool = True
+    engine: str
+    voice: str
+    locale: str
+    audio_url: str
+    cached: bool
+    note: str

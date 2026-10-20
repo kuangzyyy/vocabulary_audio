@@ -118,7 +118,28 @@ viprop=url|mime|derivatives|extmetadata
 
 **不使用浏览器 SpeechSynthesis、edge-tts 或其他机器合成语音冒充真人录音。**
 
-## 5. 缓存设计
+## 5. 整句音频：为什么使用本机 TTS
+
+### 没有直接使用真人整句录音
+
+- Wikimedia Commons 的发音文件是**单词级**录音，不是任意 PDF 例句的整句录音。
+- 没有可靠、合法、可覆盖任意书籍句子的通用真人整句音源；不同书籍的句子文本不会预先存在同一来源中。
+- 把多个单词录音拼接成整句不是自然朗读，音高、重音、连读和停顿都会失真，本项目**明确禁止**这种做法并把它称为真人录音。
+
+### 当前方案：本机 Windows SAPI
+
+- 使用 Windows `System.Speech` 的已安装英文语音（本机为 Microsoft Zira Desktop，en-US）在本机生成 WAV。
+- 通过 `scripts/tts_sapi.ps1` 调用，文本写入临时 UTF-8 文件，不经过命令行拼接，避免注入。
+- 生成的 WAV 缓存到 `data/audio_cache/<sha256>.wav`，旁边保存 JSON：文本、engine、voice、locale、`synthetic: true`、生成时间。
+- 前端持续显示“合成语音（非真人录音）”徽标和说明；接口返回 `synthetic: true`，不会把 TTS 标为真人录音。
+- 句子文本只发送到本机后端，由本机语音引擎处理，不发送到云端。
+- 句子最长 500 字符；过长返回明确错误。当前只选择系统英文语音，不伪造英式/美式整句选项。
+- Windows 系统语音用于本机个人使用；分发生成的音频前需要复核 Windows 语音许可条款。
+- 非 Windows 环境没有该 TTS 能力时，整句接口返回 503；单词真人录音不受影响。
+
+如果将来要接入真人整句音频，可行方向包括：取得许可的有声书片段、自己录制、或授权的句子/短语语料库。它们都需要逐条核对文本匹配和许可证，当前未实现。
+
+## 6. 缓存设计
 
 - 缓存目录：`data/audio_cache/`
 - 缓存键：`sha256("wikimedia-commons|v1|" + word + "|" + accent)`
@@ -130,7 +151,7 @@ viprop=url|mime|derivatives|extmetadata
 - 前端优先重播已加载音频；同一单词/口音不重复请求
 - 暂未实现自动清理；长期使用需要增加缓存上限和清理策略
 
-## 6. 替代方案与限制
+## 7. 替代方案与限制
 
 | 方案 | 结论 |
 | --- | --- |
@@ -138,9 +159,10 @@ viprop=url|mime|derivatives|extmetadata
 | Forvo | 需要 API Key 和商业/使用条款，未接入 |
 | Merriam-Webster / Oxford API | 需要 Key，许可限制较多，未接入 |
 | Free Dictionary API | 音频来源和许可链不够明确，未采用 |
-| 浏览器 SpeechSynthesis | 机器合成，不能标为真人；本项目不采用 |
+| 浏览器 SpeechSynthesis | 机器合成，不能标为真人；本项目整句改用可缓存的本机 Windows SAPI |
 | edge-tts 等非官方接口 | 服务条款和稳定性不可靠，禁止 |
 | 本地 Piper 等 TTS | 合成语音；若未来使用必须明确标注“合成语音”，不能作为真人录音 |
+| Windows SAPI（当前整句方案） | 本机合成、可缓存 WAV；明确标记合成语音，不冒充真人 |
 | 自建真人录音库 | 最可控，但需要录音、授权和存储，当前不做 |
 
 当前限制：
@@ -151,17 +173,23 @@ viprop=url|mime|derivatives|extmetadata
 - 来源页可能失效；缓存元数据保留当时的信息。
 - 录音格式和浏览器支持：优先 MP3，当前在 Chromium 验证；OGG/WAV 的浏览器兼容性需另行验证。
 
-## 7. 隐私边界
+## 8. 隐私边界
 
 为获取**未缓存**单词的真人录音，只发送：
 
 - 被点击的单词文本（例如 `hello`）
 - 语言/口音参数（`auto`、`us` 或 `uk`）
 
+整句 TTS：
+
+- 句子文本只发送到本机 FastAPI，由本机 Windows 语音引擎生成 WAV。
+- 不发送到 Wikimedia、云端 TTS 或其他第三方。
+- 生成结果只保存在本机缓存。
+
 不发送：
 
-- PDF 文件、书名、页面文字或整页/整本内容
+- PDF 文件、书名、页面文字或整页/整本内容（单词查询只发送单个词）
 - 照片、OCR 文本
 - 文件名、用户身份、设备信息（User-Agent 只标识项目工具）
 
-已缓存的单词完全在本机播放，不发起外部请求。
+已缓存的单词/整句完全在本机播放，不发起外部请求。

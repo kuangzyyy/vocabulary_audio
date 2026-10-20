@@ -82,6 +82,12 @@ def test_wrapped_sentence_remains_one_sentence() -> None:
     sentence = matching[0]
     assert sentence.text.endswith("playback.")
     assert sentence.bbox[3] - sentence.bbox[1] > 0.03
+    assert len(sentence.segments) > 1
+    assert len({segment.line_id for segment in sentence.segments}) == len(
+        sentence.segments
+    )
+    for segment in sentence.segments:
+        assert_valid_bbox(segment.bbox)
 
 
 def test_rotated_page_returns_visual_coordinates() -> None:

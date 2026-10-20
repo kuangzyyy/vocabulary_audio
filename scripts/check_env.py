@@ -173,6 +173,18 @@ def main():
         "curl",
         curl_text or "not installed (urllib fallback)",
     )
+    powershell_path = shutil.which("powershell")
+    report(
+        powershell_path is not None,
+        "Windows PowerShell",
+        powershell_path or "not found (sentence TTS unavailable)",
+    )
+    tts_script = ROOT / "scripts" / "tts_sapi.ps1"
+    report(
+        tts_script.is_file(),
+        "tts_sapi.ps1",
+        "present" if tts_script.is_file() else "missing",
+    )
     tesseract_text, _ = run_version("tesseract")
     report(
         tesseract_text is not None,

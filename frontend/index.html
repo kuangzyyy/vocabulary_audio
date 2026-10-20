@@ -18,7 +18,7 @@
           <img class="brand-icon" src="/favicon.svg" alt="" width="40" height="40" />
           <div class="brand-copy">
             <h1>Vocabulary Audio</h1>
-            <p>PDF 原版页面点读 · 真人单词发音</p>
+            <p>PDF 原版页面点读 · 真人单词 / 合成整句</p>
           </div>
         </div>
         <div class="topbar-actions">
@@ -40,13 +40,13 @@
           <span class="drop-mark" aria-hidden="true">PDF</span>
           <h2>打开一本 PDF，开始点读</h2>
           <p class="drop-lead">
-            保留原书页面排版，直接点击英文单词；点击句子区域可以听整句。
+            保留原书页面排版；单词播放真人录音，整句使用明确标记的本机合成语音。
           </p>
           <button id="choose-file-button" class="button primary large" type="button">
             选择 PDF 文件
           </button>
           <p class="drop-hint">
-            也可以把文件拖到这里 · 文件只保存在本机，不上传云端
+            也可以把文件拖到这里 · 打开后可切换单词/整句模式 · 文件只保存在本机
           </p>
         </div>
         <div class="feature-list" aria-label="当前版本能力">
@@ -57,13 +57,13 @@
           </article>
           <article>
             <span>02</span>
-            <h3>精确点击</h3>
-            <p>PyMuPDF 提取单词坐标，透明点击层随翻页、缩放和滚动对齐。</p>
+            <h3>点词 / 点句</h3>
+            <p>显式切换点击模式，单词和句子点击不互相误触，缩放滚动仍对齐。</p>
           </article>
           <article>
             <span>03</span>
-            <h3>真人录音</h3>
-            <p>单词发音来自 Wikimedia Commons，显示来源与许可，并缓存在本机。</p>
+            <h3>真人单词 + 整句</h3>
+            <p>单词来自 Wikimedia Commons 真人录音；整句为本机合成语音，明确标注非真人。</p>
           </article>
         </div>
       </section>
@@ -73,6 +73,26 @@
           <div class="book-meta">
             <strong id="book-name">未打开文件</strong>
             <span id="book-pages"></span>
+          </div>
+
+          <div class="toolbar-group click-mode" role="group" aria-label="点击模式">
+            <span class="click-mode-label">点击</span>
+            <button
+              id="mode-word"
+              class="mode-button"
+              type="button"
+              aria-pressed="true"
+              aria-label="单词模式"
+              title="点单词播放单词发音"
+            >单词</button>
+            <button
+              id="mode-sentence"
+              class="mode-button"
+              type="button"
+              aria-pressed="false"
+              aria-label="整句模式"
+              title="点句子播放本机合成语音"
+            >整句</button>
           </div>
 
           <div class="toolbar-group" aria-label="翻页">
@@ -124,7 +144,7 @@
             <strong id="recognized-text">点击页面上的英文单词</strong>
             <div class="result-meta-row">
               <span id="recognized-meta" class="result-meta">
-                点击单词播放 Wikimedia Commons 真人录音
+                点单词播放真人录音；整句模式播放本机合成语音
               </span>
               <div id="accent-controls" class="accent-controls" hidden></div>
             </div>
@@ -145,8 +165,14 @@
               ></a>
               <span id="audio-attribution"></span>
             </div>
+            <div id="synthetic-note" class="synthetic-note" hidden>
+              本机 Windows 系统语音合成生成，不是真人录音。
+            </div>
           </div>
           <div class="result-side">
+            <span id="synthetic-badge" class="synthetic-badge" hidden>
+              合成语音
+            </span>
             <div id="play-indicator" class="play-indicator">
               <span class="play-bars" aria-hidden="true"><i></i><i></i><i></i></span>
               <span id="play-text">真人发音</span>
@@ -156,6 +182,7 @@
             </button>
           </div>
           <audio id="word-audio" class="visually-hidden" preload="auto"></audio>
+          <audio id="sentence-audio" class="visually-hidden" preload="auto"></audio>
         </div>
       </section>
 

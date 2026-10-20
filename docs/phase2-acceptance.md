@@ -1,5 +1,7 @@
 # Phase 2 验收记录：真实单词发音
 
+> Phase 3 已将整句点读改为明确标记的本机 Windows TTS；本文件保留 Phase 2 当时的状态记录。
+
 - 日期：2026-10-20
 - 环境：Windows 11，Python 3.12.10，Node 24.18.0
 - 浏览器：ZCode In-app Browser（Chromium）

@@ -22,7 +22,13 @@ from typing import Iterable
 
 import pymupdf
 
-from backend.app.models.schemas import LineItem, PageData, SentenceItem, WordItem
+from backend.app.models.schemas import (
+    LineItem,
+    PageData,
+    SentenceItem,
+    SentenceSegment,
+    WordItem,
+)
 from backend.app.services.errors import (
     EmptyPdfError,
     EncryptedPdfError,
@@ -303,7 +309,32 @@ def _finish_sentence(
         id=sentence_id,
         text=_tidy_text(" ".join(token.raw_text for token in tokens)),
         bbox=normalize_rect(page, _union_rects(token.rect for token in tokens)),
+        segments=_sentence_segments(page, tokens),
     )
+
+
+def _sentence_segments(
+    page: pymupdf.Page,
+    tokens: list[Token],
+) -> list[SentenceSegment]:
+    """Return one clickable box per line, avoiding a large multi-line union box."""
+    groups: dict[tuple[int, int], list[Token]] = {}
+    for token in tokens:
+        groups.setdefault((token.block_no, token.line_no), []).append(token)
+
+    segments: list[SentenceSegment] = []
+    for (block_no, line_no) in sorted(groups):
+        line_tokens = groups[(block_no, line_no)]
+        segments.append(
+            SentenceSegment(
+                line_id=_line_id(block_no, line_no),
+                bbox=normalize_rect(
+                    page,
+                    _union_rects(token.rect for token in line_tokens),
+                ),
+            )
+        )
+    return segments
 
 
 def _english_word(raw_text: str) -> str | None:

@@ -18,6 +18,8 @@ DEFAULT_AUDIO_USER_AGENT = "VocabularyAudio/0.1 (local educational project)"
 DEFAULT_AUDIO_MAX_BYTES = 10 * 1024 * 1024
 DEFAULT_AUDIO_TIMEOUT_SECONDS = 20.0
 DEFAULT_AUDIO_USE_PROXY = False
+DEFAULT_SENTENCE_MAX_CHARS = 500
+DEFAULT_TTS_TIMEOUT_SECONDS = 30.0
 
 
 @dataclass(frozen=True)
@@ -28,6 +30,8 @@ class Settings:
     audio_max_bytes: int = DEFAULT_AUDIO_MAX_BYTES
     audio_timeout_seconds: float = DEFAULT_AUDIO_TIMEOUT_SECONDS
     audio_use_proxy: bool = DEFAULT_AUDIO_USE_PROXY
+    sentence_max_chars: int = DEFAULT_SENTENCE_MAX_CHARS
+    tts_timeout_seconds: float = DEFAULT_TTS_TIMEOUT_SECONDS
 
 
 @lru_cache
@@ -53,6 +57,16 @@ def get_settings() -> Settings:
     audio_use_proxy = os.environ.get(
         "VOCABULARY_AUDIO_USE_PROXY", str(int(DEFAULT_AUDIO_USE_PROXY))
     ).lower() in {"1", "true", "yes", "on"}
+    sentence_max_chars = int(
+        os.environ.get(
+            "VOCABULARY_AUDIO_SENTENCE_MAX_CHARS", str(DEFAULT_SENTENCE_MAX_CHARS)
+        )
+    )
+    tts_timeout_seconds = float(
+        os.environ.get(
+            "VOCABULARY_AUDIO_TTS_TIMEOUT_SECONDS", str(DEFAULT_TTS_TIMEOUT_SECONDS)
+        )
+    )
     return Settings(
         data_dir=data_dir.resolve(),
         max_upload_bytes=max_upload_bytes,
@@ -60,4 +74,6 @@ def get_settings() -> Settings:
         audio_max_bytes=audio_max_bytes,
         audio_timeout_seconds=audio_timeout_seconds,
         audio_use_proxy=audio_use_proxy,
+        sentence_max_chars=sentence_max_chars,
+        tts_timeout_seconds=tts_timeout_seconds,
     )

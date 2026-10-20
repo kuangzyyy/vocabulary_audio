@@ -8,8 +8,9 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import FileResponse
 
 from backend.app.config import get_settings
-from backend.app.models.schemas import WordAudioInfo
+from backend.app.models.schemas import SentenceAudioInfo, WordAudioInfo
 from backend.app.services.audio_service import AudioService
+from backend.app.services.sentence_audio import SYNTHETIC_NOTE, SentenceAudioService
 
 router = APIRouter(prefix="/api/audio", tags=["audio"])
 
@@ -24,6 +25,17 @@ def get_audio_service() -> AudioService:
         max_bytes=settings.audio_max_bytes,
         timeout=settings.audio_timeout_seconds,
         use_proxy=settings.audio_use_proxy,
+    )
+
+
+@lru_cache
+def get_sentence_service() -> SentenceAudioService:
+    """Return the process-wide sentence TTS service."""
+    settings = get_settings()
+    return SentenceAudioService(
+        settings.data_dir / "audio_cache",
+        max_chars=settings.sentence_max_chars,
+        tts_timeout=settings.tts_timeout_seconds,
     )
 
 
@@ -61,4 +73,22 @@ def get_audio_file(
             "Cache-Control": "public, max-age=86400",
             "Content-Disposition": "inline",
         },
+    )
+
+
+@router.get("/sentence", response_model=SentenceAudioInfo)
+def get_sentence_audio(
+    text: str = Query(..., min_length=1),
+    service: SentenceAudioService = Depends(get_sentence_service),
+) -> SentenceAudioInfo:
+    resolved = service.resolve(text)
+    return SentenceAudioInfo(
+        text=resolved.text,
+        synthetic=resolved.synthetic,
+        engine=resolved.engine,
+        voice=resolved.voice,
+        locale=resolved.locale,
+        audio_url=f"/api/audio/cache/{resolved.cache_id}",
+        cached=resolved.cached,
+        note=SYNTHETIC_NOTE,
     )

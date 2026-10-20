@@ -32,6 +32,13 @@ export class PdfViewer {
     this.autoFit = true;
     this.renderToken = 0;
     this.destroyed = false;
+    this.setClickMode('word');
+  }
+
+  setClickMode(mode) {
+    const sentenceMode = mode === 'sentence';
+    this.stage.classList.toggle('mode-sentence', sentenceMode);
+    this.stage.classList.toggle('mode-word', !sentenceMode);
   }
 
   get hasDocument() {
@@ -298,23 +305,35 @@ export class PdfViewer {
 
     const sentenceFragment = document.createDocumentFragment();
     for (const sentence of pageData.sentences ?? []) {
-      const element = document.createElement('button');
-      element.type = 'button';
-      element.className = 'sentence-hit';
-      element.dataset.sentenceId = sentence.id;
-      element.dataset.sentenceText = sentence.text;
-      element.dataset.bbox = JSON.stringify(sentence.bbox);
-      element.setAttribute('aria-label', `播放例句：${sentence.text}`);
-      element.title = `点击播放整句：${sentence.text}`;
+      const segments =
+        Array.isArray(sentence.segments) && sentence.segments.length > 0
+          ? sentence.segments
+          : [{ bbox: sentence.bbox, line_id: '' }];
 
-      if (!applyBox(element, sentence.bbox)) {
-        continue;
+      for (const segment of segments) {
+        const element = document.createElement('button');
+        element.type = 'button';
+        element.className = 'sentence-hit';
+        element.dataset.sentenceId = sentence.id;
+        element.dataset.sentenceText = sentence.text;
+        element.dataset.segmentLineId = segment.line_id || '';
+        element.dataset.bbox = JSON.stringify(segment.bbox);
+        element.setAttribute(
+          'aria-label',
+          `播放整句合成语音：${sentence.text}`,
+        );
+        element.title =
+          `点击播放整句（本机合成语音，非真人录音）：${sentence.text}`;
+
+        if (!applyBox(element, segment.bbox)) {
+          continue;
+        }
+        element.addEventListener('click', (event) => {
+          event.stopPropagation();
+          this.callbacks.onSentenceClick?.(sentence, element);
+        });
+        sentenceFragment.append(element);
       }
-      element.addEventListener('click', (event) => {
-        event.stopPropagation();
-        this.callbacks.onSentenceClick?.(sentence, element);
-      });
-      sentenceFragment.append(element);
     }
     this.sentenceLayer.append(sentenceFragment);
 

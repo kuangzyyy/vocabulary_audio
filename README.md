@@ -1,37 +1,40 @@
 # Vocabulary Audio
 
-一个**本地优先**的英语点读工具：在电脑上打开 PDF，直接点击原始页面里的英文单词，就能听到来自 Wikimedia Commons 的真人录音；后续会支持手机拍摄纸质书页面后点读。
+一个**本地优先**的英语点读工具：在电脑上打开 PDF，点击原始页面里的英文单词听真人录音，或切换到整句模式点击例句听整句；后续会支持手机拍摄纸质书页面后点读。
 
-> **当前状态：Phase 2 已完成（2026-10-20）**
+> **当前状态：Phase 3 已完成（2026-10-20）**
 >
-> 已实现：PDF 原版页面渲染、单词/句子坐标提取、透明点击层、翻页/缩放/滚动、
-> **真实单词发音、美式/英式选择、来源与许可展示、本地音频缓存**、错误处理。
+> 已实现：PDF 原版页面渲染、单词/句子坐标、透明点击层、翻页/缩放/滚动、
+> **真人单词发音、美式/英式选择、来源与许可、本地缓存**、
+> **整句点读（点词/点句模式、本机 Windows TTS、合成语音标记、缓存）**。
 >
-> 尚未实现：整句真实音频、手机照片 OCR、EPUB、收藏和学习记录。
+> 尚未实现：手机照片 OCR、真人整句录音、EPUB、收藏和学习记录。
 
 ## 现在能做什么
 
 - 用“打开 PDF”按钮、拖放或文件选择打开普通文本 PDF。
 - PDF.js 按原始排版显示页面，不用重排文本替代原书。
-- 点击页面上的英文单词，底部显示准确识别结果并**播放真人录音**。
+- **单词模式**：点击英文单词，显示识别结果并播放 Wikimedia Commons 真人录音。
 - 如果该单词同时有美式/英式录音，页面会显示两个可点击的口音选项；只有一种时只显示该口音，不伪造另一种。
-- 录音来自 Wikimedia Commons，页面会显示发音来源、许可证和作者信息（如果有）。
-- 成功获取的音频保存在本机，后续点击优先使用缓存，不再重复下载。
-- 点击句子内部的空白处会显示整句；**整句真实音频尚未接入**。
+- **整句模式**：点击例句区域任意位置，播放整句。整句使用本机 Windows 语音合成，界面明确标记“合成语音（非真人录音）”。
+- 点词/点句是显式模式，避免单词点击和句子点击互相误触；单词模式仍可点击句子空白处播整句。
+- 录音和合成语音都会缓存到本机，重复点击优先复用；加载、失败、重播都有明确反馈。
 - 支持上一页/下一页、页码输入、放大/缩小、“适合宽度”和页面滚动；点击区域始终与原文对齐。
 - 扫描版页面明确提示“暂不支持 OCR”，不伪造识别结果。
-- 音频缺失、网络失败、播放失败都有明确提示；页面不会崩溃。
+- 音频缺失、网络失败、TTS 不可用、播放失败都有明确提示；页面不会崩溃。
 
 ## 暂不实现
 
-- 整句真人录音。
-- 浏览器 TTS 或其他机器合成语音；本项目不会把合成语音标成真人录音。
+- **真人整句录音**：没有可靠、合法、可覆盖任意 PDF 句子的通用来源；当前使用本机 TTS 并明确标注，不把多个单词录音拼接后称为真人整句。
+- 云端 TTS、edge-tts 或其他非官方语音接口。
 - 手机照片 OCR（RapidOCR 依赖尚未安装）。
 - EPUB、单词收藏、生词本、学习记录。
 - 用户账号、云同步、分享、公开部署。
 - 扫描版 PDF 的 OCR。
 
 ## 音频来源与许可
+
+### 单词真人录音
 
 **来源：Wikimedia Commons 官方 MediaWiki API。**
 
@@ -42,7 +45,16 @@
 - 每个缓存文件旁保存来源页面、原始文件地址、许可证、作者、获取时间等元数据。
 - 页面会显示来源链接和许可证，满足署名要求。
 
-**隐私边界：** 点击一个**尚未缓存**的单词时，只有该单词文本会发送到 Wikimedia Commons API；不会发送 PDF、整页文字、照片、书籍内容或用户身份。已缓存的单词完全在本机播放。若需要完全离线，需要预先准备合法音频包，这不在当前阶段内。
+### 整句语音（合成）
+
+- 没有使用真人整句录音，也没有把单词录音拼接成整句。
+- 使用本机 **Windows SAPI / System.Speech** 英文语音（本机为 Microsoft Zira Desktop，en-US），生成 WAV 并缓存。
+- 界面会持续显示“合成语音（非真人录音）”标签和说明，不会把它称为真人录音。
+- 语音选择取决于系统已安装的英文语音；当前不提供伪造的英式/美式整句选项。
+- TTS 完全在本机运行，不把句子文本发送到云端；生成结果只保存在 `data/audio_cache/`。
+- Windows 系统语音仅用于本机个人使用；分发合成音频前需复核 Windows 语音的许可条款。
+
+**隐私边界：** 点击一个**尚未缓存**的单词时，只有该单词文本会发送到 Wikimedia Commons API；不会发送 PDF、整页文字、照片、书籍内容或用户身份。整句 TTS 的句子文本只发送到本机后端，由本机语音引擎处理。已缓存的单词/整句完全在本机播放。
 
 更详细的来源评估、API 访问方式、限流策略和替代方案见 [docs/audio-source.md](docs/audio-source.md)。
 
@@ -54,10 +66,11 @@
 | PDF 解析 | PyMuPDF 1.26.5 | 提取单词、行、句子和坐标 |
 | PDF 显示 | PDF.js 6.4.299 | 保留原始排版渲染 |
 | 前端 | Vite 8 + 原生 JavaScript | 无需先学 React/Vue |
-| 音频来源 | Wikimedia Commons 官方 API | 逐文件许可、作者和录音地址 |
-| 音频播放 | HTMLAudioElement | 播放 MP3/OGG；浏览器原生播放 |
-| 音频缓存 | 本地文件 + JSON 元数据 | 避免重复下载，保留来源和许可 |
-| 照片 OCR（Phase 3） | RapidOCR + ONNX Runtime | 本地运行、返回文字坐标 |
+| 单词音频 | Wikimedia Commons 官方 API | 逐文件许可、作者和录音地址 |
+| 整句音频 | Windows SAPI / System.Speech | 本机合成、明确标记、WAV 缓存 |
+| 音频播放 | HTMLAudioElement | 播放 MP3/OGG/WAV |
+| 音频缓存 | 本地文件 + JSON 元数据 | 避免重复请求/合成，保留来源和许可 |
+| 照片 OCR（Phase 4） | RapidOCR + ONNX Runtime | 本地运行、返回文字坐标 |
 | 测试 | pytest + Node 内置 test runner | 后端 API/缓存/坐标测试、前端 UI 单元测试 |
 
 后端使用标准库 `urllib` 作为兜底传输，并优先使用系统 `curl` 直接访问 Wikimedia。Windows 10/11 自带 `curl.exe`。如果网络必须走系统代理，可以设置：
@@ -79,10 +92,11 @@ $env:VOCABULARY_AUDIO_USE_PROXY = "1"
 | Pillow / pytest / httpx / Ruff | 已安装到 `.venv`（开发与测试用） |
 | PDF.js / Vite | 已安装到 `frontend/node_modules` |
 | 系统 curl | Windows 自带，可访问 Wikimedia |
-| RapidOCR / ONNX Runtime | **未安装**；Phase 3 需要时执行 `pip install -r requirements-ocr.txt` |
+| Windows SAPI | 已启用 Microsoft Zira / David（en-US） |
+| RapidOCR / ONNX Runtime | **未安装**；Phase 4 需要时执行 `pip install -r requirements-ocr.txt` |
 | Tesseract / Docker | 不需要 |
 
-后端音频功能不需要额外的 Python 包或 API Key。
+单词真人录音和整句 TTS 都不需要额外的 Python 包或 API Key。
 
 一键复查：
 
@@ -149,15 +163,18 @@ npm run dev
 ### 5. 使用
 
 1. 点击“打开 PDF”或把 PDF 拖入页面。
-2. 点击英文单词：
-   - 显示识别结果；
-   - 自动加载并播放真人录音；
+2. 选择工具栏的 **单词** 模式（默认）：
+   - 点击英文单词，显示识别结果并播放 Wikimedia Commons 真人录音；
    - 有美式/英式两种录音时，可以点击“美式”“英式”切换；
    - 只有一种录音时显示该口音，不会出现伪造的第二个选项；
-   - 没有录音时显示“没有找到可合法使用真人录音”，不会用合成语音冒充。
-3. 点击句子内单词之间的空白处，会显示整句；整句音频暂未接入。
-4. 用工具栏翻页、输入页码（Enter 跳转）、缩放或“适合宽度”。
-5. 页面较长时在阅读区内滚动；点击区域与页面一起移动。
+   - 没有录音时显示“没有找到可合法使用真人录音”。
+3. 选择工具栏的 **整句** 模式：
+   - 点击例句区域任意位置（包括单词位置）都会播放整句；
+   - 整句由本机 Windows 语音合成，界面显示“合成语音（非真人录音）”；
+   - 第一次生成本地 WAV，后续重复点击直接复用缓存。
+4. 在单词模式下，点击句子内单词之间的空白处也可以播整句；整句模式是更明确、避免误触的方式。
+5. 用工具栏翻页、输入页码（Enter 跳转）、缩放或“适合宽度”。
+6. 页面较长时在阅读区内滚动；点击区域与页面一起移动。
 
 ### 6. 手机访问（当前 PDF 和音频也可用）
 
@@ -173,7 +190,7 @@ npm run dev
 ## 测试
 
 ```powershell
-# 后端：坐标、PDF 提取、书籍 API、音频来源/缓存/API
+# 后端：坐标、PDF 提取、书籍 API、单词音频、整句 TTS、缓存
 python -m pytest
 
 # Python 代码检查
@@ -188,11 +205,11 @@ npm --prefix frontend run build
 
 当前结果：
 
-- 后端：**48 passed**。
+- 后端：**55 passed**。
 - 前端：**12 passed**（6 个坐标测试 + 6 个音频 UI 测试）。
 - 前端生产构建：成功。
 - Ruff：通过。
-- 浏览器端到端：真实 PDF 点读不回归；真实美式/英式录音播放、缓存、无音频提示均验证通过。
+- 浏览器端到端：单词真人录音、点词/点句模式、整句 TTS、缓存和 PDF 对齐均验证通过。
 
 详细记录见 [docs/phase2-acceptance.md](docs/phase2-acceptance.md)。
 
@@ -204,7 +221,7 @@ vocabulary_audio/
 ├── README.md
 ├── requirements.txt              # Phase 1/2 后端依赖
 ├── requirements-dev.txt          # 测试/检查依赖
-├── requirements-ocr.txt          # Phase 3 OCR 依赖（当前不需要安装）
+├── requirements-ocr.txt          # Phase 4 OCR 依赖（当前不需要安装）
 ├── pyproject.toml
 ├── backend/
 │   ├── app/
@@ -213,39 +230,43 @@ vocabulary_audio/
 │   │   ├── api/
 │   │   │   ├── health.py
 │   │   │   ├── books.py          # PDF 上传、文件、页面数据
-│   │   │   └── audio.py          # 单词音频查询和缓存文件
+│   │   │   └── audio.py          # 单词音频、整句 TTS、缓存文件
 │   │   ├── services/
 │   │   │   ├── books.py
 │   │   │   ├── pdf_extractor.py
 │   │   │   ├── audio_provider.py # Wikimedia Commons 候选/许可过滤
-│   │   │   ├── audio_service.py  # 选择、下载、缓存、并发锁
+│   │   │   ├── audio_service.py  # 单词选择、下载、缓存、并发锁
+│   │   │   ├── sentence_audio.py # 本机 Windows TTS、WAV 缓存
 │   │   │   ├── wikimedia_http.py # curl/urllib 传输、限流和重试
 │   │   │   └── errors.py
 │   │   └── models/schemas.py
-│   └── tests/                    # 48 个后端测试
+│   └── tests/                    # 55 个后端测试
 ├── frontend/
 │   ├── index.html
 │   ├── package.json
 │   ├── vite.config.js
 │   ├── src/
-│   │   ├── main.js               # 文件选择、PDF 工具栏、音频结果栏
+│   │   ├── main.js               # 文件选择、PDF 工具栏、点词/点句、音频结果栏
 │   │   ├── api/client.js
 │   │   ├── pdf/viewer.js
 │   │   ├── pdf/coordinates.js
-│   │   ├── audio/wordAudio.js    # 单音频元素、重复点击/取消/重播
+│   │   ├── audio/audioPlayback.js # 音频元素、重复点击/取消/重播
 │   │   ├── audio/audioMeta.js    # 口音选项和来源文本
 │   │   └── styles/main.css
 │   └── tests/                    # 坐标 + 音频 UI 单元测试
 ├── data/                         # 私人数据，全部被 Git 忽略
 │   ├── books/
 │   ├── photos/
-│   └── audio_cache/              # 真人录音缓存 + 许可元数据
+│   └── audio_cache/              # 真人录音和 TTS WAV 缓存 + 元数据
 ├── docs/
 │   ├── environment.md
 │   ├── audio-source.md           # 音频来源评估与合规说明
 │   ├── phase1-acceptance.md
-│   └── phase2-acceptance.md
-└── scripts/check_env.py
+│   ├── phase2-acceptance.md
+│   └── phase3-acceptance.md
+└── scripts/
+    ├── check_env.py
+    └── tts_sapi.ps1              # Windows SAPI 本机语音合成
 ```
 
 ## 坐标是怎么对齐的
@@ -259,7 +280,7 @@ vocabulary_audio/
 ## 隐私与数据
 
 - 默认只监听 `127.0.0.1`，PDF、照片和整页/整本内容不上传云端。
-- 为获取真人录音，只有**被点击的单词文本**会发送到 Wikimedia Commons API；已缓存单词不再发起网络请求。
+- 为获取真人录音，只有**被点击的单词文本**会发送到 Wikimedia Commons API；整句文本只发送到本机后端，由本机 TTS 处理。已缓存单词/整句不再发起外部请求。
 - PDF 保存在 `data/books/`，照片将来保存在 `data/photos/`，音频缓存保存在 `data/audio_cache/`；这些目录都被 `.gitignore` 忽略。
 - 缓存 JSON 包含来源 URL、许可证、作者、获取时间，便于审计和署名。
 - 日志只记录 ID、页码和错误信息，不记录书籍正文。
@@ -268,15 +289,17 @@ vocabulary_audio/
 
 ## 已知限制
 
-- 不是每个英文单词都有 Wikimedia Commons 录音；没有时只显示明确提示，不用 TTS 冒充。
+- 不是每个英文单词都有 Wikimedia Commons 录音；没有时只显示明确提示，不回退到 TTS。
 - 第一次获取某个词（或某个口音）需要联网；Wikimedia 可能限流，后端会按 `Retry-After` 等待并重试一次，页面显示“加载中”。成功后会缓存，之后立即播放。
-- 当前只支持单词音频；整句点击只显示文本，不播放音频。
+- 整句使用本机 Windows TTS，**是合成语音，不是真人录音**；当前语音为系统英文语音（本机 Zira，en-US），不伪造英式/美式整句选项。
+- 整句最长 500 个字符；更长的句子会提示“句子过长”，需要点击更短的句子。
+- TTS 依赖 Windows `System.Speech` 和已安装英文语音；其他操作系统会返回明确的“语音合成不可用”错误，单词真人录音不受影响。
 - 录音口音来自文件名，无法确定时显示“口音未标注”。
 - 当前开发环境曾出现 Python 系统代理出口被 Wikimedia 限流；默认用系统 `curl` 直连，必要时可用 `VOCABULARY_AUDIO_USE_PROXY=1` 切回系统代理。
 - 扫描版 PDF 只提示，不做 OCR。
 - 复杂多栏、表格、脚注、跨页句子的切分仍是启发式规则，需要更多真实书籍验证。
 - 原生文件选择框无法由自动化环境操作；已用文件输入 `change` 和拖放路径验证，仍建议人工点一次。
-- 音频缓存目前不会自动清理；缓存很小，但长期使用可增加清理策略。
+- 音频缓存目前不会自动清理；长期使用可增加清理策略。
 - 当前没有鉴权，不能公开部署。
 
 ## 路线图
@@ -286,16 +309,18 @@ vocabulary_audio/
 | Phase 0 | 环境、规则、目录、README、健康检查 | 已完成 |
 | Phase 1 | PDF 上传、坐标提取、PDF.js 渲染、单词点击、翻页/缩放/滚动 | 已完成 |
 | Phase 2 | 合法真人单词录音、来源/许可、口音选择、本地缓存 | 已完成 |
-| Phase 3 | 手机拍照/选图 + RapidOCR + 照片点击层 | 待开始 |
-| Phase 4 | 整句音频、合法音频扩展来源与缓存策略 | 后续 |
-| Phase 5 | EPUB、收藏、学习记录（SQLite） | 后续 |
+| Phase 3 | 整句点读：点词/点句模式、本机 TTS、合成语音标记、WAV 缓存 | 已完成 |
+| Phase 4 | 手机拍照/选图 + RapidOCR + 照片点击层 | 待开始 |
+| Phase 5 | 合法真人整句音频评估、EPUB、收藏、学习记录 | 后续 |
 
 ## 相关文档
 
 - [AGENTS.md](AGENTS.md)：技术规则、坐标契约、隐私规则、验收标准。
-- [docs/audio-source.md](docs/audio-source.md)：音频来源、许可、API 礼仪和替代方案。
+- [docs/audio-source.md](docs/audio-source.md)：单词录音、整句 TTS、许可、API 礼仪和替代方案。
 - [docs/environment.md](docs/environment.md)：环境和依赖状态。
 - [docs/phase1-acceptance.md](docs/phase1-acceptance.md)：PDF 点读验收。
+- [docs/phase2-acceptance.md](docs/phase2-acceptance.md)：真人单词发音与缓存验收。
+- [docs/phase3-acceptance.md](docs/phase3-acceptance.md)：整句点读、点词/点句模式和 TTS 缓存验收。
 - [docs/phase2-acceptance.md](docs/phase2-acceptance.md)：真人发音与缓存验收。
 
 ## 许可证

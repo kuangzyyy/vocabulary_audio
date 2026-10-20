@@ -65,3 +65,11 @@ class AudioRateLimitedError(AudioError):
 
 class AudioCacheError(AudioError):
     status_code = 500
+
+
+class InvalidSentenceError(AudioError):
+    status_code = 400
+
+
+class SentenceTtsError(AudioError):
+    status_code = 503

@@ -1,15 +1,18 @@
-import { fetchWordAudio } from '../api/client.js';
-
 /**
  * One audio element and one in-flight request at a time.
  *
- * Duplicate clicks for the same word/accent reuse the loaded recording; a new
- * word cancels the previous request and pauses previous playback.
+ * The same controller is used for word recordings and sentence TTS; the caller
+ * supplies the fetcher. Duplicate clicks for the same key reuse the loaded
+ * audio; a new request cancels the previous one and pauses playback.
  */
-export class WordAudioController {
-  constructor(audioElement, callbacks = {}) {
+export class AudioPlaybackController {
+  constructor(audioElement, callbacks = {}, options = {}) {
+    if (typeof options.fetcher !== 'function') {
+      throw new Error('AudioPlaybackController requires a fetcher');
+    }
     this.audio = audioElement;
     this.callbacks = callbacks;
+    this.fetcher = options.fetcher;
     this.requestId = 0;
     this.pendingKey = null;
     this.pendingPromise = null;
@@ -32,14 +35,14 @@ export class WordAudioController {
         return;
       }
       this.callbacks.onPlaybackError?.(
-        new Error('录音播放失败，请点击“重播”再试。'),
+        new Error('音频播放失败，请点击“重播”再试。'),
         this.lastMeta,
       );
     });
   }
 
-  play(word, accent = 'auto') {
-    const key = `${word.toLowerCase()}|${accent}`;
+  play(keyText, accent = 'auto') {
+    const key = `${keyText.toLowerCase()}|${accent}`;
     if (this.pendingKey === key && this.pendingPromise) {
       return this.pendingPromise;
     }
@@ -54,11 +57,11 @@ export class WordAudioController {
     this.lastKey = null;
     this.lastMeta = null;
     this._pauseCurrent();
-    this.callbacks.onLoading?.({ word, accent });
+    this.callbacks.onLoading?.({ word: keyText, accent });
 
     const promise = (async () => {
       try {
-        const metadata = await fetchWordAudio(word, accent);
+        const metadata = await this.fetcher(keyText, accent);
         if (requestId !== this.requestId) {
           return;
         }
@@ -72,7 +75,7 @@ export class WordAudioController {
         if (requestId !== this.requestId) {
           return;
         }
-        this.callbacks.onFetchError?.(error, word, accent);
+        this.callbacks.onFetchError?.(error, keyText, accent);
       } finally {
         if (requestId === this.requestId) {
           this.pendingKey = null;

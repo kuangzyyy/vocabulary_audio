@@ -50,6 +50,17 @@ export async function fetchWordAudio(word, accent = 'auto') {
   return response.json();
 }
 
+export async function fetchSentenceAudio(text) {
+  const params = new URLSearchParams({ text });
+  const response = await fetch(`/api/audio/sentence?${params}`, {
+    headers: { Accept: 'application/json' },
+  });
+  if (!response.ok) {
+    throw await toError(response);
+  }
+  return response.json();
+}
+
 export function bookFileUrl(bookId) {
   return `/api/books/${encodeURIComponent(bookId)}/file`;
 }
