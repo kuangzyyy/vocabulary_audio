@@ -75,6 +75,24 @@ class SentenceTtsError(AudioError):
     status_code = 503
 
 
+class EpubError(Exception):
+    """Base class for EPUB upload/validation errors."""
+
+    status_code = 400
+
+
+class InvalidEpubError(EpubError):
+    status_code = 400
+
+
+class EpubTooLargeError(EpubError):
+    status_code = 413
+
+
+class EpubNotFoundError(EpubError):
+    status_code = 404
+
+
 class PhotoError(Exception):
     """Base class for photo upload/OCR errors."""
 

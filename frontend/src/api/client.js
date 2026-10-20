@@ -61,6 +61,19 @@ export async function fetchSentenceAudio(text) {
   return response.json();
 }
 
+export async function uploadEpub(file) {
+  const form = new FormData();
+  form.append('file', file, file.name);
+  const response = await fetch('/api/epubs', {
+    method: 'POST',
+    body: form,
+  });
+  if (!response.ok) {
+    throw await toError(response);
+  }
+  return response.json();
+}
+
 export async function uploadPhoto(file) {
   const form = new FormData();
   form.append('file', file, file.name);
@@ -85,4 +98,8 @@ export async function deletePhoto(photoId) {
 
 export function bookFileUrl(bookId) {
   return `/api/books/${encodeURIComponent(bookId)}/file`;
+}
+
+export function epubFileUrl(epubId) {
+  return `/api/epubs/${encodeURIComponent(epubId)}/file`;
 }

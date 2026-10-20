@@ -1,5 +1,7 @@
 # Phase 5 测试报告：整合、回归与完善
 
+> 本报告记录 Phase 5 当时的结果（后端 71、前端 12）。Phase 6 加入 EPUB 后为后端 83、前端 24，见 [phase6-acceptance.md](phase6-acceptance.md)。
+
 - 日期：2026-10-20
 - 环境：Windows 11，Python 3.12.10，Node 24.18.0
 - 浏览器：ZCode In-app Browser（Chromium），桌面 1280×720 / 移动 390×844

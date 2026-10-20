@@ -45,6 +45,8 @@ data/books/*
 !data/books/.gitkeep
 data/photos/*
 !data/photos/.gitkeep
+data/epubs/*
+!data/epubs/.gitkeep
 data/audio_cache/*
 !data/audio_cache/.gitkeep
 data/tmp/

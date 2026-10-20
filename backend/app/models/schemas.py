@@ -13,6 +13,16 @@ class BookInfo(BaseModel):
     size_bytes: int
 
 
+class EpubInfo(BaseModel):
+    epub_id: str
+    filename: str
+    title: str
+    author: str | None = None
+    language: str | None = None
+    chapter_count: int
+    size_bytes: int
+
+
 class WordItem(BaseModel):
     id: str
     text: str

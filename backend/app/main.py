@@ -1,7 +1,7 @@
 """FastAPI application entry point.
 
-Current API surface: health, PDF books, word/sentence audio, and local photo
-OCR. The app stays local-first and binds to 127.0.0.1 by default.
+Current API surface: health, PDF books, EPUB books, word/sentence audio, and
+local photo OCR. The app stays local-first and binds to 127.0.0.1 by default.
 """
 
 from fastapi import FastAPI, Request
@@ -11,10 +11,11 @@ from fastapi.responses import JSONResponse
 from backend.app import APP_VERSION
 from backend.app.api.audio import router as audio_router
 from backend.app.api.books import router as books_router
+from backend.app.api.epubs import router as epubs_router
 from backend.app.api.health import router as health_router
 from backend.app.api.photos import router as photos_router
 from backend.app.logging_utils import install_access_log_filter
-from backend.app.services.errors import AudioError, PdfError, PhotoError
+from backend.app.services.errors import AudioError, EpubError, PdfError, PhotoError
 
 install_access_log_filter()
 
@@ -56,7 +57,14 @@ async def photo_error_handler(request: Request, exc: PhotoError) -> JSONResponse
     return JSONResponse(status_code=exc.status_code, content={"detail": str(exc)})
 
 
+@app.exception_handler(EpubError)
+async def epub_error_handler(request: Request, exc: EpubError) -> JSONResponse:
+    """Return predictable JSON errors for EPUB validation failures."""
+    return JSONResponse(status_code=exc.status_code, content={"detail": str(exc)})
+
+
 app.include_router(health_router)
 app.include_router(books_router)
+app.include_router(epubs_router)
 app.include_router(audio_router)
 app.include_router(photos_router)

@@ -6,10 +6,10 @@
     <meta name="theme-color" content="#0f172a" />
     <meta
       name="description"
-      content="本地优先的英语 PDF 与纸质书照片点读工具。"
+      content="本地优先的英语 PDF、EPUB 与纸质书照片点读工具。"
     />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>Vocabulary Audio · PDF 与照片点读</title>
+    <title>Vocabulary Audio · PDF、EPUB 与照片点读</title>
   </head>
   <body>
     <div id="app" class="app">
@@ -18,13 +18,16 @@
           <img class="brand-icon" src="/favicon.svg" alt="" width="40" height="40" />
           <div class="brand-copy">
             <h1>Vocabulary Audio</h1>
-            <p>PDF / 纸质书照片点读</p>
+            <p>PDF / EPUB / 纸质书照片点读</p>
           </div>
         </div>
         <div class="topbar-actions">
           <span class="privacy-pill">本地处理</span>
           <button id="open-file-button" class="button primary" type="button">
             打开 PDF
+          </button>
+          <button id="open-epub-button" class="button" type="button">
+            EPUB
           </button>
           <button id="open-photo-button" class="button" type="button">
             照片
@@ -34,6 +37,12 @@
             class="visually-hidden"
             type="file"
             accept="application/pdf,.pdf"
+          />
+          <input
+            id="epub-input"
+            class="visually-hidden"
+            type="file"
+            accept="application/epub+zip,.epub"
           />
           <input
             id="photo-input"
@@ -81,6 +90,21 @@
             </button>
             <button id="choose-photo-button" class="button" type="button">
               从相册选择
+            </button>
+          </div>
+        </div>
+
+        <div class="photo-entry epub-entry">
+          <div class="photo-entry-copy">
+            <span class="photo-entry-kicker">EPUB 电子书</span>
+            <h2>打开 EPUB，按章节点读</h2>
+            <p>
+              保留原书章节和可重排文字；支持章节切换、字号调整，点击正文单词或整句播放。
+            </p>
+          </div>
+          <div class="photo-actions">
+            <button id="choose-epub-button" class="button" type="button">
+              选择 EPUB
             </button>
           </div>
         </div>
@@ -232,6 +256,71 @@
             <div id="photo-loading" class="page-loading" role="status" hidden>
               正在识别照片…
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="epub-viewer" class="epub-viewer" hidden>
+        <div class="viewer-toolbar epub-toolbar">
+          <div class="book-meta">
+            <strong id="epub-name">未打开 EPUB</strong>
+            <span id="epub-meta"></span>
+          </div>
+
+          <div class="toolbar-group click-mode" role="group" aria-label="EPUB 点击模式">
+            <span class="click-mode-label">点击</span>
+            <button
+              id="epub-mode-word"
+              class="mode-button"
+              type="button"
+              aria-pressed="true"
+              aria-label="EPUB 单词模式"
+              title="点正文单词播放发音"
+            >单词</button>
+            <button
+              id="epub-mode-sentence"
+              class="mode-button"
+              type="button"
+              aria-pressed="false"
+              aria-label="EPUB 整句模式"
+              title="点正文句子播放整句合成语音"
+            >整句</button>
+          </div>
+
+          <div class="toolbar-group" aria-label="EPUB 章节">
+            <button id="epub-prev" class="button" type="button">上一章</button>
+            <button id="epub-toc-toggle" class="button" type="button" aria-expanded="false">
+              目录
+            </button>
+            <button id="epub-next" class="button" type="button">下一章</button>
+            <span id="epub-chapter" class="epub-chapter-label">第 1 节</span>
+          </div>
+
+          <div class="toolbar-group" aria-label="EPUB 字号">
+            <button id="epub-font-out" class="button square" type="button" aria-label="缩小字号">
+              −
+            </button>
+            <span id="epub-font-label" class="zoom-label">100%</span>
+            <button id="epub-font-in" class="button square" type="button" aria-label="放大字号">
+              +
+            </button>
+            <button id="epub-font-reset" class="button" type="button">重置字号</button>
+          </div>
+        </div>
+
+        <div class="epub-body">
+          <div id="epub-container" class="epub-container" tabindex="0"></div>
+          <aside id="epub-toc" class="epub-toc" hidden>
+            <div class="epub-toc-head">
+              <strong>目录</strong>
+              <button id="epub-toc-close" class="button ghost small" type="button">
+                关闭
+              </button>
+            </div>
+            <div id="epub-toc-list" class="epub-toc-list"></div>
+          </aside>
+          <div id="epub-loading" class="page-loading" role="status" hidden>
+            正在加载 EPUB…
           </div>
         </div>
       </section>

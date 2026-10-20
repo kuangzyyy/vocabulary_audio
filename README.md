@@ -1,16 +1,25 @@
 # Vocabulary Audio
 
-一个**本地优先**的英语点读工具：在电脑上打开 PDF，点击原文单词听真人录音、切换整句模式听整句；手机可以拍摄或选择纸质书照片，本机 OCR 后在原照片上点读。
+一个**本地优先**的英语点读工具：在电脑上打开 PDF 或 EPUB，点击原文单词听真人录音、切换整句模式听整句；手机可以拍摄或选择纸质书照片，本机 OCR 后在原照片上点读。
 
-> **当前状态：Phase 5 已完成（整合、回归测试与边界检查，2026-10-20）**
+> **当前状态：Phase 6 已完成（EPUB 点读，2026-10-20）**
 >
-> 已实现：PDF 原版页面点读、真人单词发音、点词/点句模式、本机整句 TTS、
+> 已实现：PDF 原版页面点读、EPUB 章节阅读与点读、真人单词发音、点词/点句模式、本机整句 TTS、
 > 手机照片导入/拍照、本机 RapidOCR、照片单词/整句点击、缩放拖动、缓存和错误处理。
-> Phase 5 对 PDF、照片、音频、布局、异常文件、网络失败和日志隐私做了回归与修复。
+> Phase 5 对 PDF、照片、音频、布局、异常文件、网络失败和日志隐私做了回归与修复；
+> Phase 6 增加 EPUB.js 阅读、目录/翻章、字号重排和正文单词/整句点读。
 >
-> 尚未实现：真人整句录音、EPUB、收藏和学习记录。真实手机相机、原生文件选择框和真实多点触控仍需人工验收。
+> 尚未实现：真人整句录音、收藏和学习记录。真实手机相机、原生文件选择框和真实多点触控仍需人工验收。
 
 ## 现在能做什么
+
+### EPUB
+- 用顶栏“EPUB”按钮、首页“选择 EPUB”或拖放打开普通 EPUB（EPUB 2/3，非 DRM）。
+- 使用 EPUB.js 显示原书可重排内容，保留章节顺序和 EPUB 自带排版。
+- 目录面板跳转章节；“上一章 / 下一章”按 spine 切换。
+- 支持字号缩放（70%–180%），文字会自动重新排版；长章节可在阅读区滚动。
+- 单词/整句模式与 PDF 相同：单词模式点击正文单词播放真人录音，整句模式点击句子播放标记为本机合成的整句。
+- EPUB 只上传到本机后端，不上传第三方云端；不支持受 DRM 保护的 EPUB。
 
 ### PDF
 - 用“打开 PDF”按钮、拖放或文件选择打开普通文本 PDF。
@@ -33,7 +42,7 @@
 
 - **真人整句录音**：没有可靠、合法、可覆盖任意 PDF 句子或照片句子的通用来源；当前使用本机 TTS 并明确标注，不把多个单词录音拼接后称为真人整句。
 - 云端 TTS、edge-tts 或其他非官方语音接口。
-- EPUB、单词收藏、生词本、学习记录。
+- 单词收藏、生词本、学习记录。
 - 用户账号、云同步、分享、公开部署。
 - 扫描版 PDF 的自动 OCR（照片 OCR 已实现；PDF 扫描页仍只提示）。
 
@@ -81,6 +90,7 @@
 | 后端 | Python 3.12 + FastAPI + Uvicorn | 本地 API 服务 |
 | PDF 解析 | PyMuPDF 1.26.5 | 提取单词、行、句子和坐标 |
 | PDF 显示 | PDF.js 6.4.299 | 保留原始排版渲染 |
+| EPUB 显示 | EPUB.js 0.3.93 | 解析 EPUB、章节导航、可重排阅读 |
 | 前端 | Vite 8 + 原生 JavaScript | 无需先学 React/Vue |
 | 单词音频 | Wikimedia Commons 官方 API | 逐文件许可、作者和录音地址 |
 | 整句音频 | Windows SAPI / System.Speech | 本机合成、明确标记、WAV 缓存 |
@@ -107,7 +117,7 @@ $env:VOCABULARY_AUDIO_USE_PROXY = "1"
 | Git | 2.55.0，满足要求 |
 | FastAPI / Uvicorn / PyMuPDF | 已安装到 `.venv` |
 | Pillow / pytest / httpx / Ruff | 已安装到 `.venv`（开发与测试用） |
-| PDF.js / Vite | 已安装到 `frontend/node_modules` |
+| PDF.js / EPUB.js / Vite | 已安装到 `frontend/node_modules`（EPUB.js 0.3.93） |
 | 系统 curl | Windows 自带，可访问 Wikimedia |
 | Windows SAPI | 已启用 Microsoft Zira / David（en-US） |
 | RapidOCR / ONNX Runtime | **已安装**到 `.venv`，模型随包提供 |
@@ -193,6 +203,14 @@ npm run dev
 4. 用工具栏翻页、输入页码（Enter 跳转）、缩放或“适合宽度”。
 5. 页面较长时在阅读区内滚动；点击区域与页面一起移动。
 
+#### EPUB
+1. 点击顶栏“EPUB”或首页“选择 EPUB”，也可以把 `.epub` 文件拖到首页。
+2. EPUB.js 显示原书可重排内容；工具栏显示书名、作者、语言和章节数。
+3. 点击“目录”打开章节列表，或使用“上一章 / 下一章”按 spine 切换。
+4. 使用字号“− / + / 重置字号”调整正文大小（70%–180%）；文字会自动重排，长章节可滚动阅读。
+5. **单词** 模式点击正文单词播放真人录音；**整句** 模式点击正文句子播放整句 TTS（明确标记合成语音）。
+6. 章节切换会停止旧音频并重置结果；“点击模式”在 PDF、EPUB 和照片之间共用。
+
 #### 手机照片
 1. 在首页点击“拍照点读”打开手机相机，或点击“从相册选择”。
 2. 上传后，原照片会显示在阅读区；底部工具栏显示照片尺寸。
@@ -205,7 +223,7 @@ npm run dev
 
 > 手机相机实际打开需要真实手机浏览器；桌面浏览器会退化为文件选择。自动化环境无法操作原生相机/文件对话框，因此相机入口仍需人工验收。
 
-### 6. 手机访问（PDF 和照片）
+### 6. 手机访问（PDF、EPUB 和照片）
 
 手机和电脑连接同一个 Wi-Fi：
 
@@ -244,6 +262,9 @@ taskkill /PID <PID> /F
 | 照片 OCR 报依赖缺失 | `pip install -r requirements-ocr.txt`，确认在 `.venv` 中执行 |
 | 照片没有识别文字 | 尽量正对书页、光线均匀、提高清晰度；查看照片下方提示 |
 | 照片只显示提示但没有单词框 | OCR 没有返回单词级坐标，或页面不是英文；不会伪造单词框 |
+| EPUB 打不开 | 确认文件未受 DRM/内容加密、是有效 EPUB 2/3；查看错误提示 |
+| EPUB 没有可点击文字 | 图片页、固定版式或脚本化内容可能没有可点正文；先换一章确认 |
+| EPUB 字号变化不明显 | 原书可能使用固定像素字号；正文继承字号会随按钮变化 |
 | 手机打不开前端 | 同一 Wi-Fi、使用手机访问电脑局域网 IP、防火墙只放行专用网络 |
 | 手机相机没有打开 | 真实手机浏览器才支持 `capture`；桌面浏览器会打开文件选择 |
 | 没有单词录音 | 该词没有合适 Wikimedia 录音；换词或检查网络/代理设置 |
@@ -253,13 +274,13 @@ taskkill /PID <PID> /F
 ## 测试
 
 ```powershell
-# 后端：坐标、PDF 提取、书籍 API、单词音频、整句 TTS、缓存
+# 后端：坐标、PDF/EPUB 提取与 API、单词音频、整句 TTS、缓存
 python -m pytest
 
 # Python 代码检查
 ruff check backend scripts
 
-# 前端坐标和口音选项测试
+# 前端坐标、口音选项和 EPUB 文本切分测试
 npm --prefix frontend test
 
 # 前端生产构建
@@ -268,13 +289,13 @@ npm --prefix frontend run build
 
 当前结果：
 
-- 后端：**71 passed**。
-- 前端：**12 passed**（6 个坐标测试 + 6 个音频 UI 测试）。
-- 前端生产构建：成功。
+- 后端：**83 passed**（Phase 6 新增 12 个 EPUB API 测试）。
+- 前端：**24 passed**（6 坐标 + 6 音频 UI + 12 EPUB 文本/目录）。
+- 前端生产构建：成功（EPUB.js 使主包约 855 KB，gzip 约 256 KB）。
 - Ruff：通过。
-- 浏览器端到端：PDF 点读、真单词发音、整句 TTS、照片 OCR、点词/点句、缩放拖动和缓存均验证通过。
+- 浏览器端到端：PDF 点读、EPUB 打开/目录/翻章/字号/点词/整句、真单词发音、整句 TTS、照片 OCR、缩放拖动和缓存均验证通过。
 
-详细记录见 [docs/phase5-test-report.md](docs/phase5-test-report.md)；各阶段历史验收见 [docs/phase4-acceptance.md](docs/phase4-acceptance.md) 等文件。
+详细记录见 [docs/phase6-acceptance.md](docs/phase6-acceptance.md)；Phase 5 整合回归见 [docs/phase5-test-report.md](docs/phase5-test-report.md)，各阶段历史验收见 [docs/phase4-acceptance.md](docs/phase4-acceptance.md) 等文件。
 
 ## 目录结构
 
@@ -293,11 +314,13 @@ vocabulary_audio/
 │   │   ├── api/
 │   │   │   ├── health.py
 │   │   │   ├── books.py          # PDF 上传、文件、页面数据
+│   │   │   ├── epubs.py          # EPUB 上传、容器校验、文件
 │   │   │   ├── audio.py          # 单词音频、整句 TTS、缓存文件
 │   │   │   └── photos.py         # 照片上传、OCR 数据、文件、删除
 │   │   ├── services/
 │   │   │   ├── books.py
 │   │   │   ├── pdf_extractor.py
+│   │   │   ├── epubs.py          # EPUB mimetype/container/OPF/spine 校验
 │   │   │   ├── photo_ocr.py      # EXIF 校正、RapidOCR、单词/句子坐标
 │   │   │   ├── audio_provider.py # Wikimedia Commons 候选/许可过滤
 │   │   │   ├── audio_service.py  # 单词选择、下载、缓存、并发锁
@@ -305,23 +328,26 @@ vocabulary_audio/
 │   │   │   ├── wikimedia_http.py # curl/urllib 传输、限流和重试
 │   │   │   └── errors.py
 │   │   └── models/schemas.py
-│   └── tests/                    # 71 个后端测试
+│   └── tests/                    # 83 个后端测试
 ├── frontend/
 │   ├── index.html
 │   ├── package.json
 │   ├── vite.config.js
 │   ├── src/
-│   │   ├── main.js               # PDF/照片/音频状态与工具栏
+│   │   ├── main.js               # PDF/EPUB/照片切换、音频状态与工具栏
 │   │   ├── api/client.js
 │   │   ├── pdf/viewer.js
 │   │   ├── pdf/coordinates.js
+│   │   ├── epub/viewer.js        # EPUB.js 阅读、目录、翻章、字号、正文点读
+│   │   ├── epub/text.js          # 取词、句子切分、目录 href 匹配
 │   │   ├── photo/viewer.js       # 照片显示、缩放、拖动、点击层
 │   │   ├── audio/audioPlayback.js # 音频元素、重复点击/取消/重播
 │   │   ├── audio/audioMeta.js    # 口音选项和来源文本
 │   │   └── styles/main.css
-│   └── tests/                    # 坐标 + 音频 UI 单元测试
+│   └── tests/                    # 坐标、音频 UI、EPUB 文本测试
 ├── data/                         # 私人数据，全部被 Git 忽略
 │   ├── books/
+│   ├── epubs/                    # 用户 EPUB + 元数据
 │   ├── photos/                   # 校正后的照片 + 元数据
 │   └── audio_cache/              # 真人录音和 TTS WAV 缓存 + 元数据
 ├── docs/
@@ -331,7 +357,9 @@ vocabulary_audio/
 │   ├── phase1-acceptance.md
 │   ├── phase2-acceptance.md
 │   ├── phase3-acceptance.md
-│   └── phase4-acceptance.md
+│   ├── phase4-acceptance.md
+│   ├── phase5-test-report.md
+│   └── phase6-acceptance.md
 └── scripts/
     ├── check_env.py
     └── tts_sapi.ps1              # Windows SAPI 本机语音合成
@@ -351,15 +379,22 @@ vocabulary_audio/
 3. 图片、句子层、单词层在同一个 `photo-stage` 内；缩放/拖动只变换这个容器。
 4. 因此点击框随图片一起缩放和移动，不需要重算屏幕坐标。
 
-后端测试覆盖 PDF 旋转和照片 EXIF 方向；前端坐标测试覆盖归一化到像素/百分比的映射；浏览器验证对比了图片和点击框的相对位置。
+### EPUB
+1. EPUB 是流式排版，没有固定页面坐标。
+2. 点击时在 EPUB.js 的 iframe 内用 `caretRangeFromPoint` 找到文本节点和偏移，再按英文单词字符边界扩展。
+3. 整句模式从最近的块级元素取文本，按标点切分后找到包含点击偏移的句子。
+4. 不往原书 HTML 中插入单词框；字号、窗口或章节变化后，文字自动重排，点击逻辑仍然有效。
+
+后端测试覆盖 PDF 旋转和照片 EXIF 方向；前端坐标测试覆盖归一化到像素/百分比的映射；EPUB 文本测试覆盖取词、句子切分和目录 href；浏览器验证对比了图片/点击框相对位置，并验证了 EPUB 翻章和字号变化后的点读。
 
 ## 隐私与数据
 
-- 默认只监听 `127.0.0.1`，PDF、照片和整页/整本内容不上传云端。
+- 默认只监听 `127.0.0.1`，PDF、EPUB、照片和整页/整本内容不上传云端。
 - 照片只上传到**本机** FastAPI，在本机用 RapidOCR 处理；不接入云端 OCR。
+- EPUB 只上传到本机后端，由浏览器端 EPUB.js 解析；不调用第三方阅读或 DRM 服务。
 - 为获取真人录音，只有**被点击的单词文本**会发送到 Wikimedia Commons API；整句文本只发送到本机后端，由本机 TTS 处理。
 - 照片保存为 `data/photos/{uuid}.jpg`（去除 EXIF 方向后重新编码），旁边保存最小元数据；清空照片会删除当前文件。
-- PDF 保存在 `data/books/`，音频缓存保存在 `data/audio_cache/`；这些目录都被 `.gitignore` 忽略。
+- PDF 保存在 `data/books/`，EPUB 保存在 `data/epubs/`，音频缓存保存在 `data/audio_cache/`；这些目录都被 `.gitignore` 忽略。
 - 缓存 JSON 包含来源 URL、许可证、作者、获取时间，便于审计和署名。
 - 日志只记录 ID、页码和错误信息，不记录书籍正文或 OCR 文本。
 - 请只处理你有权使用的书籍和照片；不要把受版权保护的文件提交到仓库。
@@ -367,6 +402,11 @@ vocabulary_audio/
 
 ## 已知限制
 
+- EPUB 只支持未加密、未受 DRM 保护的 EPUB 2/3；受 DRM 或内容加密的文件会被拒绝。
+- EPUB 点读按正文点击位置取词/取句，不修改原 HTML；图片、表格中的非连续文本和脚本化内容可能无法点读。点击链接仍按 EPUB 自身链接行为处理。
+- EPUB 字号缩放主要影响正文继承字号；原书用固定像素字号或复杂版式时，变化可能不完全一致。固定版式（pre-paginated）EPUB 的可重排效果取决于原书。
+- EPUB 句子切分使用前端标点启发式，缩写、分号和异常标点可能导致句子边界不完美。
+- EPUB.js 会增加前端包体积；生产构建约 855 KB（gzip 约 256 KB）。
 - 不是每个英文单词都有 Wikimedia Commons 录音；没有时只显示明确提示，不回退到 TTS。
 - 第一次获取某个词（或某个口音）需要联网；Wikimedia 可能限流，后端会按 `Retry-After` 等待并重试一次，页面显示“加载中”。成功后会缓存，之后立即播放。
 - 整句使用本机 Windows TTS，**是合成语音，不是真人录音**；当前语音为系统英文语音（本机 Zira，en-US），不伪造英式/美式整句选项。
@@ -380,7 +420,7 @@ vocabulary_audio/
 - 双指缩放/拖动已用指针事件和移动尺寸视口验证，但没有在真实手机上做多点触控人工验收。
 - 原生文件选择框无法由自动化环境操作；已用文件输入 `change` 和拖放路径验证，仍建议人工点一次。
 - 复杂多栏、表格、脚注、跨页句子的切分仍是启发式规则，需要更多真实书籍验证。
-- 音频/照片缓存目前不会自动清理；清空照片会删除当前照片文件。
+- 音频/照片/EPUB 缓存目前不会自动清理；清空照片会删除当前照片文件。
 - 当前没有鉴权，不能公开部署。
 
 ## 路线图
@@ -393,7 +433,8 @@ vocabulary_audio/
 | Phase 3 | 整句点读：点词/点句模式、本机 TTS、合成语音标记、WAV 缓存 | 已完成 |
 | Phase 4 | 手机拍照/选图 + 本机 RapidOCR + 照片点击层 + 缩放拖动 | 已完成 |
 | Phase 5 | 整合、全面回归、边界/失败测试、日志脱敏、测试报告 | 已完成 |
-| Phase 6 | 真人整句音频评估、EPUB、收藏、学习记录 | 后续 |
+| Phase 6 | EPUB 上传/解析 + EPUB.js 阅读 + 目录/翻章 + 字号重排 + 正文点读 | 已完成 |
+| Phase 7 | 真人整句音频评估、收藏、学习记录 | 后续 |
 
 ## 相关文档
 
@@ -405,6 +446,7 @@ vocabulary_audio/
 - [docs/phase2-acceptance.md](docs/phase2-acceptance.md)：真人单词发音与缓存验收。
 - [docs/phase3-acceptance.md](docs/phase3-acceptance.md)：整句点读、点词/点句模式和 TTS 缓存验收。
 - [docs/phase4-acceptance.md](docs/phase4-acceptance.md)：手机照片导入、OCR、点读、缩放拖动验收。
+- [docs/phase6-acceptance.md](docs/phase6-acceptance.md)：EPUB 打开、目录/翻章、字号重排、正文点读验收。
 - [docs/phase5-test-report.md](docs/phase5-test-report.md)：Phase 5 整合回归、边界测试和已通过/未测试清单。
 
 ## 许可证

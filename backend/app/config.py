@@ -21,6 +21,7 @@ DEFAULT_AUDIO_USE_PROXY = False
 DEFAULT_SENTENCE_MAX_CHARS = 500
 DEFAULT_TTS_TIMEOUT_SECONDS = 30.0
 DEFAULT_MAX_PHOTO_BYTES = 25 * 1024 * 1024
+DEFAULT_MAX_EPUB_BYTES = 100 * 1024 * 1024
 
 
 @dataclass(frozen=True)
@@ -34,6 +35,7 @@ class Settings:
     sentence_max_chars: int = DEFAULT_SENTENCE_MAX_CHARS
     tts_timeout_seconds: float = DEFAULT_TTS_TIMEOUT_SECONDS
     max_photo_bytes: int = DEFAULT_MAX_PHOTO_BYTES
+    max_epub_bytes: int = DEFAULT_MAX_EPUB_BYTES
 
 
 @lru_cache
@@ -74,6 +76,11 @@ def get_settings() -> Settings:
             "VOCABULARY_AUDIO_MAX_PHOTO_BYTES", str(DEFAULT_MAX_PHOTO_BYTES)
         )
     )
+    max_epub_bytes = int(
+        os.environ.get(
+            "VOCABULARY_AUDIO_MAX_EPUB_BYTES", str(DEFAULT_MAX_EPUB_BYTES)
+        )
+    )
     return Settings(
         data_dir=data_dir.resolve(),
         max_upload_bytes=max_upload_bytes,
@@ -84,4 +91,5 @@ def get_settings() -> Settings:
         sentence_max_chars=sentence_max_chars,
         tts_timeout_seconds=tts_timeout_seconds,
         max_photo_bytes=max_photo_bytes,
+        max_epub_bytes=max_epub_bytes,
     )

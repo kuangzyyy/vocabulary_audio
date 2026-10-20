@@ -258,6 +258,18 @@ input:focus-visible,
   flex: none;
 }
 
+.epub-entry {
+  border-color: rgb(129 140 248 / 24%);
+  background:
+    linear-gradient(135deg, rgb(129 140 248 / 12%), rgb(56 189 248 / 8%)),
+    rgb(17 28 49 / 58%);
+}
+
+.epub-entry .photo-entry-kicker {
+  border-color: rgb(129 140 248 / 40%);
+  color: #c7d2fe;
+}
+
 .drop-zone {
   width: min(760px, 100%);
   padding: clamp(1.5rem, 5vw, 3rem);
@@ -563,6 +575,103 @@ input:focus-visible,
 
 .photo-viewport .page-loading {
   z-index: 20;
+}
+
+.epub-viewer {
+  grid-row: 2;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.epub-body {
+  grid-row: 2;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: #f8fafc;
+}
+
+.epub-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #fff;
+  color: #111827;
+}
+
+.epub-container iframe {
+  display: block;
+  border: 0;
+}
+
+.epub-body .page-loading {
+  z-index: 20;
+}
+
+.epub-chapter-label {
+  max-width: 18rem;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.74rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.epub-toc {
+  position: absolute;
+  z-index: 30;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  width: min(330px, 86vw);
+  border-left: 1px solid var(--line);
+  background: #111c31;
+  box-shadow: -20px 0 50px rgb(2 6 23 / 45%);
+}
+
+.epub-toc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.epub-toc-list {
+  overflow: auto;
+  padding: 0.5rem;
+}
+
+.epub-toc-item {
+  display: block;
+  width: 100%;
+  margin: 0.1rem 0;
+  padding: 0.45rem 0.6rem;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+}
+
+.epub-toc-item:hover {
+  background: rgb(56 189 248 / 10%);
+  color: #e2e8f0;
+}
+
+.epub-toc-item.is-active {
+  background: rgb(56 189 248 / 16%);
+  color: #bae6fd;
 }
 
 .sentence-layer,

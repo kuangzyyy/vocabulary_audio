@@ -3,7 +3,7 @@
 - 检查日期：2026-10-20
 - 工作目录：`D:\app_github\vocabulary_audio`
 - 系统：Windows（版本 10.0.26200，x64）
-- 当前阶段：Phase 5（整合、回归测试与边界检查）已完成
+- 当前阶段：Phase 6（EPUB 阅读与点读）已完成
 
 ## 结论
 
@@ -17,15 +17,15 @@
 | 照片 OCR | RapidOCR 3.10.0 + ONNX Runtime 1.31.0，CPU 本地推理 |
 | 单词音频网络 | 系统 `curl` 可访问 Wikimedia Commons；urllib 兜底 |
 | 整句 TTS | Windows SAPI 可用：Microsoft Zira / David（en-US） |
-| 后端测试 | **71 passed** |
-| 前端测试 | **12 passed**（6 坐标 + 6 音频 UI） |
+| 后端测试 | **83 passed** |
+| 前端测试 | **24 passed**（6 坐标 + 6 音频 UI + 12 EPUB 文本/目录） |
 | 前端构建 | 成功 |
-| 浏览器验收 | PDF、单词/整句音频、照片 OCR、点读、缩放拖动、清空均通过（移动尺寸 390×844） |
+| 浏览器验收 | PDF、EPUB、单词/整句音频、照片 OCR、点读、缩放拖动、清空均通过（移动尺寸 390×844） |
 
 ## 1. 工作区与私人数据
 
 - 第一次检查时工作区为空，没有删除或覆盖任何用户文件。
-- `data/books/` 的测试 PDF、`data/photos/` 的测试照片、`data/audio_cache/` 的测试音频都是运行产物，已被 `.gitignore` 忽略。
+- `data/books/` 的测试 PDF、`data/epubs/` 的测试 EPUB、`data/photos/` 的测试照片、`data/audio_cache/` 的测试音频都是运行产物，已被 `.gitignore` 忽略。
 - 仓库不包含书籍、照片或音频文件。
 
 ## 2. 系统与开发工具
@@ -34,7 +34,7 @@
 | --- | --- | --- |
 | Python | 3.12.10 | 满足 |
 | pip（venv 内） | 26.2.1 | 满足 |
-| Node.js | v24.18.0 | 满足 PDF.js 6 / Vite 8 |
+| Node.js | v24.18.0 | 满足 PDF.js 6 / EPUB.js / Vite 8 |
 | npm | 11.16.0 | 满足 |
 | Git | 2.55.0.windows.2 | 满足 |
 | curl | 系统自带（Windows 11） | 单词音频访问 Wikimedia |
@@ -64,6 +64,7 @@ RapidOCR 的检测/方向分类/识别模型随包提供在：
 | 包 | 版本 | 状态 |
 | --- | --- | --- |
 | `pdfjs-dist` | 6.4.299 | 已安装 |
+| `epubjs` | 0.3.93 | 已安装（BSD-2-Clause） |
 | `vite` | 8.3.4 | 已安装 |
 | Node 内置 test runner | Node 24.18 | 可运行 |
 
@@ -83,23 +84,29 @@ RapidOCR 的检测/方向分类/识别模型随包提供在：
 
 详见 [photo-ocr.md](photo-ocr.md)。
 
-## 6. Phase 5 验证结果
+## 6. Phase 6 验证结果
 
 ### 自动化测试
 
 ```text
 python -m pytest
-71 passed
+83 passed
 
 ruff check backend scripts
 All checks passed
 
 npm --prefix frontend test
-12 passed
+24 passed
 
 npm --prefix frontend run build
-built successfully
+built successfully（主包 855.44 kB，gzip 256.10 kB）
 ```
+
+新增 EPUB 验证：
+
+- EPUB 2/3 容器 mimetype、container.xml、OPF 元数据、spine 章节数解析。
+- 非 ZIP、缺少 mimetype、错误 mimetype、缺少 container、路径穿越、无章节、超大文件均返回明确错误。
+- 浏览器验证 EPUB.js 打开、目录 3 项、上一章/下一章、字号 100%→120%→100%、长章节滚动、正文单词/整句点读。详见 [phase6-acceptance.md](phase6-acceptance.md)。
 
 ### 移动尺寸浏览器
 
@@ -122,9 +129,10 @@ built successfully
 - 模糊、反光、透视、手写、多栏页面 OCR 效果有限；没有去倾斜/去模糊/版面分析。
 - OCR 阅读顺序可能与多栏页面的自然顺序不同。
 - 部分图片若只返回字符/行级结果，不会伪造单词框，只保留句子点击并提示。
-- 缓存没有自动清理策略；清空照片只删除当前照片。
+- 缓存没有自动清理策略；清空照片只删除当前照片，EPUB 文件保留在 `data/epubs/`。
 - 当前只支持英文点读。
-- PyMuPDF 许可证：AGPL-3.0 或商业许可，分发前需复核。
+- EPUB 只支持未加密、非 DRM 的 EPUB 2/3；固定版式、RTL/竖排、脚本化/复杂 SVG/MathML 尚未验证。
+- PyMuPDF 许可证：AGPL-3.0 或商业许可，分发前需复核；EPUB.js 为 BSD-2-Clause。
 
 ## 8. 如何重新检查
 

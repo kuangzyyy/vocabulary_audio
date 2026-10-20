@@ -138,7 +138,7 @@ def main():
     report(npm_installed, "node_modules", "installed" if npm_installed else "run npm install")
     lockfile = ROOT / "frontend" / "package-lock.json"
     report(lockfile.is_file(), "package-lock.json", "present" if lockfile.is_file() else "missing")
-    for package_name in ("pdfjs-dist", "vite"):
+    for package_name in ("pdfjs-dist", "epubjs", "vite"):
         manifest = node_modules / package_name / "package.json"
         if manifest.is_file():
             try:
@@ -152,7 +152,7 @@ def main():
 
     print()
     print("Project data directories")
-    for relative in ("data/books", "data/photos", "data/audio_cache"):
+    for relative in ("data/books", "data/epubs", "data/photos", "data/audio_cache"):
         path = ROOT / relative
         report(path.is_dir(), relative, "present" if path.is_dir() else "missing")
 

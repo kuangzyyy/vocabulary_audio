@@ -1,8 +1,10 @@
 import './styles/main.css';
 
-import { fetchSentenceAudio, fetchWordAudio, deletePhoto, uploadPdf, uploadPhoto } from './api/client.js';
+import { fetchSentenceAudio, fetchWordAudio, deletePhoto, uploadEpub, uploadPdf, uploadPhoto } from './api/client.js';
 import { accentLabel, accentOptions } from './audio/audioMeta.js';
 import { AudioPlaybackController } from './audio/audioPlayback.js';
+import { EpubViewer } from './epub/viewer.js';
+import { hrefMatches } from './epub/text.js';
 import { PdfViewer } from './pdf/viewer.js';
 import { PhotoViewer } from './photo/viewer.js';
 
@@ -16,16 +18,37 @@ function byId(id) {
 
 const dom = {
   openFileButton: byId('open-file-button'),
+  openEpubButton: byId('open-epub-button'),
   openPhotoButton: byId('open-photo-button'),
   chooseFileButton: byId('choose-file-button'),
+  chooseEpubButton: byId('choose-epub-button'),
   choosePhotoButton: byId('choose-photo-button'),
   takePhotoButton: byId('take-photo-button'),
   fileInput: byId('file-input'),
+  epubInput: byId('epub-input'),
   photoInput: byId('photo-input'),
   cameraInput: byId('camera-input'),
   emptyState: byId('empty-state'),
   dropZone: byId('drop-zone'),
   viewer: byId('viewer'),
+  epubViewer: byId('epub-viewer'),
+  epubName: byId('epub-name'),
+  epubMeta: byId('epub-meta'),
+  epubChapter: byId('epub-chapter'),
+  epubContainer: byId('epub-container'),
+  epubLoading: byId('epub-loading'),
+  epubModeWord: byId('epub-mode-word'),
+  epubModeSentence: byId('epub-mode-sentence'),
+  epubPrev: byId('epub-prev'),
+  epubNext: byId('epub-next'),
+  epubTocToggle: byId('epub-toc-toggle'),
+  epubToc: byId('epub-toc'),
+  epubTocClose: byId('epub-toc-close'),
+  epubTocList: byId('epub-toc-list'),
+  epubFontOut: byId('epub-font-out'),
+  epubFontIn: byId('epub-font-in'),
+  epubFontLabel: byId('epub-font-label'),
+  epubFontReset: byId('epub-font-reset'),
   photoViewer: byId('photo-viewer'),
   photoName: byId('photo-name'),
   photoSize: byId('photo-size'),
@@ -86,15 +109,18 @@ const dom = {
 
 let activeBook = null;
 let currentPhoto = null;
+let currentEpub = null;
 let activeSource = null;
 let fileBusy = false;
 let photoBusy = false;
+let epubBusy = false;
 let resizeTimer = 0;
 let activeHitElement = null;
 let renderedPage = 0;
 let currentWordText = '';
 let currentAudioMeta = null;
 let currentAudioKind = null;
+let lastEpubHref = '';
 let clickMode = readClickMode();
 
 const wordAudioController = new AudioPlaybackController(
@@ -261,6 +287,41 @@ const photoViewer = new PhotoViewer(
   },
 );
 
+const epubViewer = new EpubViewer(
+  {
+    container: dom.epubContainer,
+    loading: dom.epubLoading,
+  },
+  {
+    onWordClick: (word) => {
+      handleWordClick(word, null);
+    },
+    onSentenceClick: (sentence) => {
+      handleSentenceClick(sentence, null);
+    },
+    onReady: ({ chapters, chapterCount, label, index, href, fontScale }) => {
+      lastEpubHref = href || '';
+      renderEpubToc(chapters);
+      updateEpubChapter(label, index, chapterCount);
+      updateEpubFontLabel(fontScale);
+    },
+    onLocationChange: ({ href, label, index, chapterCount }) => {
+      if (lastEpubHref && !hrefMatches(lastEpubHref, href)) {
+        resetResult();
+      }
+      lastEpubHref = href;
+      updateEpubChapter(label, index, chapterCount);
+      updateEpubTocActive(href);
+    },
+    onFontChange: (scale) => {
+      updateEpubFontLabel(scale);
+    },
+    onError: (message) => {
+      showError(message);
+    },
+  },
+);
+
 setClickMode(clickMode);
 
 function readClickMode() {
@@ -280,8 +341,11 @@ function setClickMode(mode) {
   dom.modeSentence.setAttribute('aria-pressed', String(sentenceMode));
   dom.photoModeWord.setAttribute('aria-pressed', String(!sentenceMode));
   dom.photoModeSentence.setAttribute('aria-pressed', String(sentenceMode));
+  dom.epubModeWord.setAttribute('aria-pressed', String(!sentenceMode));
+  dom.epubModeSentence.setAttribute('aria-pressed', String(sentenceMode));
   viewer.setClickMode(clickMode);
   photoViewer.setClickMode(clickMode);
+  epubViewer.setClickMode(clickMode);
   try {
     localStorage.setItem('vocabulary-audio-click-mode', clickMode);
   } catch {
@@ -303,8 +367,14 @@ function clickModeHint() {
 }
 
 function requestFilePicker() {
-  if (!fileBusy) {
+  if (!fileBusy && !photoBusy && !epubBusy) {
     dom.fileInput.click();
+  }
+}
+
+function requestEpubPicker() {
+  if (!fileBusy && !photoBusy && !epubBusy) {
+    dom.epubInput.click();
   }
 }
 
@@ -318,24 +388,33 @@ function setPhotoBusy(busy) {
   updateBusyControls();
 }
 
+function setEpubBusy(busy) {
+  epubBusy = busy;
+  updateBusyControls();
+}
+
 function updateBusyControls() {
-  const busy = fileBusy || photoBusy;
+  const busy = fileBusy || photoBusy || epubBusy;
   dom.fileInput.disabled = busy;
+  dom.epubInput.disabled = busy;
   dom.photoInput.disabled = busy;
   dom.cameraInput.disabled = busy;
   dom.openFileButton.disabled = busy;
+  dom.openEpubButton.disabled = busy;
   dom.openPhotoButton.disabled = busy;
   dom.chooseFileButton.disabled = busy;
+  dom.chooseEpubButton.disabled = busy;
   dom.choosePhotoButton.disabled = busy;
   dom.takePhotoButton.disabled = busy;
   dom.photoReplace.disabled = busy;
   dom.photoRetake.disabled = busy;
   dom.photoClear.disabled = busy;
   dom.openFileButton.textContent = fileBusy ? '正在打开…' : '打开 PDF';
+  dom.openEpubButton.textContent = epubBusy ? '正在打开…' : 'EPUB';
 }
 
 async function handleFile(file) {
-  if (!file || fileBusy || photoBusy) {
+  if (!file || fileBusy || photoBusy || epubBusy) {
     return;
   }
 
@@ -361,9 +440,15 @@ async function handleFile(file) {
     if (previousPhoto) {
       void deletePhoto(previousPhoto.photo_id).catch(() => {});
     }
+    if (currentEpub) {
+      currentEpub = null;
+      epubViewer.clear();
+      closeEpubToc();
+    }
     activeBook = book;
     activeSource = 'pdf';
     dom.emptyState.hidden = true;
+    dom.epubViewer.hidden = true;
     dom.photoViewer.hidden = true;
     dom.viewer.hidden = false;
     dom.resultPanel.hidden = false;
@@ -379,7 +464,12 @@ async function handleFile(file) {
       wordAudioController.stop();
       sentenceAudioController.stop();
       dom.viewer.hidden = true;
-      if (!currentPhoto) {
+      if (currentEpub) {
+        activeSource = 'epub';
+        dom.epubViewer.hidden = false;
+        dom.resultPanel.hidden = false;
+        resetResult();
+      } else if (!currentPhoto) {
         showEmptyState();
       }
     }
@@ -390,7 +480,7 @@ async function handleFile(file) {
 }
 
 async function handlePhoto(file) {
-  if (!file || photoBusy || fileBusy) {
+  if (!file || photoBusy || fileBusy || epubBusy) {
     return;
   }
 
@@ -408,12 +498,15 @@ async function handlePhoto(file) {
   }
 
   const previousPhoto = currentPhoto;
+  const previousEpub = currentEpub;
   setPhotoBusy(true);
   hideError();
   hidePhotoMessage();
   activeSource = 'photo';
   dom.emptyState.hidden = true;
   dom.viewer.hidden = true;
+  dom.epubViewer.hidden = true;
+  closeEpubToc();
   dom.photoViewer.hidden = false;
   dom.resultPanel.hidden = false;
   dom.photoName.textContent = file.name;
@@ -430,6 +523,11 @@ async function handlePhoto(file) {
     dom.resultPanel.hidden = false;
     resetResult();
     showPhotoMessage(photo);
+    if (previousEpub) {
+      currentEpub = null;
+      epubViewer.clear();
+      closeEpubToc();
+    }
     if (previousPhoto && previousPhoto.photo_id !== photo.photo_id) {
       void deletePhoto(previousPhoto.photo_id).catch(() => {});
     }
@@ -460,6 +558,14 @@ async function handlePhoto(file) {
           showEmptyState();
         }
       }
+    } else if (previousEpub) {
+      currentEpub = previousEpub;
+      activeSource = 'epub';
+      dom.photoViewer.hidden = true;
+      dom.epubViewer.hidden = false;
+      dom.emptyState.hidden = true;
+      dom.resultPanel.hidden = false;
+      resetResult();
     } else if (viewer.hasDocument) {
       activeSource = 'pdf';
       dom.photoViewer.hidden = true;
@@ -475,6 +581,178 @@ async function handlePhoto(file) {
     dom.photoInput.value = '';
     dom.cameraInput.value = '';
   }
+}
+
+async function handleEpub(file) {
+  if (!file || epubBusy || fileBusy || photoBusy) {
+    return;
+  }
+
+  const name = (file.name || '').toLowerCase();
+  if (!name.endsWith('.epub') && file.type !== 'application/epub+zip') {
+    showError('请选择 EPUB 文件。');
+    return;
+  }
+  if (file.size === 0) {
+    showError('这个 EPUB 是空的，请换一个文件。');
+    return;
+  }
+
+  const previousPhoto = currentPhoto;
+  const previousEpub = currentEpub;
+  const hadPdf = viewer.hasDocument;
+
+  setEpubBusy(true);
+  hideError();
+  lastEpubHref = '';
+  activeSource = 'epub';
+  dom.emptyState.hidden = true;
+  dom.viewer.hidden = true;
+  dom.photoViewer.hidden = true;
+  dom.epubViewer.hidden = false;
+  dom.resultPanel.hidden = false;
+  dom.epubName.textContent = file.name;
+  dom.epubMeta.textContent = '正在上传并解析…';
+  dom.epubChapter.textContent = '';
+  renderEpubToc([]);
+  closeEpubToc();
+  resetResult('正在加载 EPUB…');
+
+  try {
+    const epub = await uploadEpub(file);
+    applyEpubInfo(epub);
+    resetResult('正在渲染 EPUB…');
+    await epubViewer.load(epub);
+
+    currentEpub = epub;
+    activeSource = 'epub';
+    dom.resultPanel.hidden = false;
+    if (previousPhoto) {
+      currentPhoto = null;
+      photoViewer.clear();
+      hidePhotoMessage();
+      void deletePhoto(previousPhoto.photo_id).catch(() => {});
+    }
+    if (hadPdf) {
+      activeBook = null;
+      await viewer.destroy();
+    }
+    resetResult();
+  } catch (error) {
+    showError(requestErrorMessage(error));
+    epubViewer.clear();
+    closeEpubToc();
+    if (previousEpub) {
+      currentEpub = previousEpub;
+      lastEpubHref = '';
+      applyEpubInfo(previousEpub);
+      dom.epubViewer.hidden = false;
+      activeSource = 'epub';
+      dom.resultPanel.hidden = false;
+      try {
+        await epubViewer.load(previousEpub);
+        resetResult();
+      } catch {
+        showEmptyState();
+      }
+    } else if (previousPhoto) {
+      currentEpub = null;
+      currentPhoto = previousPhoto;
+      activeSource = 'photo';
+      dom.epubViewer.hidden = true;
+      dom.photoViewer.hidden = false;
+      dom.resultPanel.hidden = false;
+      resetResult();
+      showPhotoMessage(previousPhoto);
+    } else if (viewer.hasDocument) {
+      currentEpub = null;
+      activeSource = 'pdf';
+      dom.epubViewer.hidden = true;
+      dom.viewer.hidden = false;
+      dom.resultPanel.hidden = false;
+      resetResult();
+    } else {
+      showEmptyState();
+    }
+  } finally {
+    setEpubBusy(false);
+    dom.epubInput.value = '';
+  }
+}
+
+function applyEpubInfo(epub) {
+  dom.epubName.textContent = epub.title || epub.filename;
+  const parts = [];
+  if (epub.author) {
+    parts.push(epub.author);
+  }
+  parts.push(`${epub.chapter_count} 章`);
+  if (epub.language) {
+    parts.push(epub.language);
+  }
+  dom.epubMeta.textContent = parts.join(' · ');
+}
+
+function renderEpubToc(chapters) {
+  dom.epubTocList.replaceChildren();
+  if (!chapters || chapters.length === 0) {
+    const empty = document.createElement('p');
+    empty.className = 'epub-toc-empty';
+    empty.textContent = '这个 EPUB 没有可用目录，可以用“上一章 / 下一章”切换。';
+    dom.epubTocList.append(empty);
+    return;
+  }
+
+  const fragment = document.createDocumentFragment();
+  for (const chapter of chapters) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'epub-toc-item';
+    button.dataset.href = chapter.href;
+    button.style.paddingLeft = `${0.6 + Math.min(chapter.depth, 5) * 0.75}rem`;
+    button.textContent = chapter.label;
+    button.addEventListener('click', () => {
+      closeEpubToc();
+      void epubViewer.displayChapter(chapter.href);
+    });
+    fragment.append(button);
+  }
+  dom.epubTocList.append(fragment);
+}
+
+function updateEpubTocActive(href) {
+  for (const button of dom.epubTocList.querySelectorAll('.epub-toc-item')) {
+    button.classList.toggle(
+      'is-active',
+      hrefMatches(button.dataset.href, href),
+    );
+  }
+}
+
+function openEpubToc() {
+  if (!currentEpub || !epubViewer.hasBook) {
+    return;
+  }
+  dom.epubToc.hidden = false;
+  dom.epubTocToggle.setAttribute('aria-expanded', 'true');
+}
+
+function closeEpubToc() {
+  dom.epubToc.hidden = true;
+  dom.epubTocToggle.setAttribute('aria-expanded', 'false');
+}
+
+function updateEpubChapter(label, index, chapterCount) {
+  dom.epubChapter.textContent = label || `第 ${index + 1} 节`;
+  const total = chapterCount || 0;
+  dom.epubPrev.disabled = total > 0 ? index <= 0 : false;
+  dom.epubNext.disabled = total > 0 ? index >= total - 1 : false;
+}
+
+function updateEpubFontLabel(scale) {
+  dom.epubFontLabel.textContent = `${Math.round(scale)}%`;
+  dom.epubFontOut.disabled = scale <= 70;
+  dom.epubFontIn.disabled = scale >= 180;
 }
 
 async function clearPhoto() {
@@ -515,8 +793,14 @@ function showEmptyState() {
   sentenceAudioController.stop();
   activeSource = null;
   currentPhoto = null;
+  currentEpub = null;
+  lastEpubHref = '';
   photoViewer.clear();
+  epubViewer.clear();
+  closeEpubToc();
+  renderEpubToc([]);
   dom.photoViewer.hidden = true;
+  dom.epubViewer.hidden = true;
   dom.viewer.hidden = true;
   dom.emptyState.hidden = false;
   dom.resultPanel.hidden = true;
@@ -713,6 +997,7 @@ function setPlayState(state, text) {
 function resetResult(text) {
   wordAudioController.stop();
   sentenceAudioController.stop();
+  epubViewer.clearHighlight();
   currentWordText = '';
   currentAudioMeta = null;
   currentAudioKind = null;
@@ -720,11 +1005,17 @@ function resetResult(text) {
     .querySelectorAll('.sentence-hit.is-active, .word-hit.is-active')
     .forEach((node) => node.classList.remove('is-active'));
   activeHitElement = null;
+  const target =
+    activeSource === 'photo'
+      ? '照片'
+      : activeSource === 'epub'
+        ? '章节'
+        : '页面';
   dom.recognizedText.textContent =
     text ||
     (clickMode === 'sentence'
-      ? `点击${activeSource === 'photo' ? '照片' : '页面'}中的句子`
-      : `点击${activeSource === 'photo' ? '照片' : '页面'}中的英文单词`);
+      ? `点击${target}中的句子`
+      : `点击${target}中的英文单词`);
   dom.recognizedMeta.textContent = clickModeHint();
   clearAudioDetails();
   setPlayState('idle', clickMode === 'sentence' ? '合成语音' : '真人发音');
@@ -794,6 +1085,15 @@ dom.fileInput.addEventListener('change', () => {
   }
 });
 
+dom.openEpubButton.addEventListener('click', requestEpubPicker);
+dom.chooseEpubButton.addEventListener('click', requestEpubPicker);
+dom.epubInput.addEventListener('change', () => {
+  const file = dom.epubInput.files?.[0];
+  if (file) {
+    void handleEpub(file);
+  }
+});
+
 const requestPhotoPicker = () => {
   if (!photoBusy && !fileBusy) {
     dom.photoInput.click();
@@ -839,7 +1139,15 @@ for (const eventName of ['dragleave', 'drop']) {
 }
 dom.dropZone.addEventListener('drop', (event) => {
   const file = event.dataTransfer?.files?.[0];
-  if (file) {
+  if (!file) {
+    return;
+  }
+  if (
+    file.type === 'application/epub+zip' ||
+    /\.epub$/i.test(file.name || '')
+  ) {
+    void handleEpub(file);
+  } else {
     void handleFile(file);
   }
 });
@@ -858,6 +1166,12 @@ dom.photoModeWord.addEventListener('click', () => {
 dom.photoModeSentence.addEventListener('click', () => {
   setClickMode('sentence');
 });
+dom.epubModeWord.addEventListener('click', () => {
+  setClickMode('word');
+});
+dom.epubModeSentence.addEventListener('click', () => {
+  setClickMode('sentence');
+});
 dom.photoZoomIn.addEventListener('click', () => {
   photoViewer.zoomBy(1.25);
 });
@@ -866,6 +1180,30 @@ dom.photoZoomOut.addEventListener('click', () => {
 });
 dom.photoReset.addEventListener('click', () => {
   photoViewer.reset();
+});
+
+dom.epubPrev.addEventListener('click', () => {
+  void epubViewer.prevChapter();
+});
+dom.epubNext.addEventListener('click', () => {
+  void epubViewer.nextChapter();
+});
+dom.epubTocToggle.addEventListener('click', () => {
+  if (dom.epubToc.hidden) {
+    openEpubToc();
+  } else {
+    closeEpubToc();
+  }
+});
+dom.epubTocClose.addEventListener('click', closeEpubToc);
+dom.epubFontOut.addEventListener('click', () => {
+  epubViewer.setFontScale(epubViewer.fontScale - 10);
+});
+dom.epubFontIn.addEventListener('click', () => {
+  epubViewer.setFontScale(epubViewer.fontScale + 10);
+});
+dom.epubFontReset.addEventListener('click', () => {
+  epubViewer.setFontScale(100);
 });
 
 dom.prevPage.addEventListener('click', () => {
@@ -917,7 +1255,7 @@ dom.replayButton.addEventListener('click', () => {
 dom.errorClose.addEventListener('click', hideError);
 
 document.addEventListener('keydown', (event) => {
-  if (!viewer.hasDocument) {
+  if (activeSource !== 'pdf' || !viewer.hasDocument) {
     return;
   }
   const tagName = event.target?.tagName;
@@ -944,6 +1282,7 @@ window.addEventListener('resize', () => {
 if (activeBook === null) {
   dom.viewer.hidden = true;
   dom.photoViewer.hidden = true;
+  dom.epubViewer.hidden = true;
   dom.resultPanel.hidden = true;
   dom.emptyState.hidden = false;
 }
