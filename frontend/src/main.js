@@ -843,6 +843,7 @@ function setActiveHit(element) {
 }
 
 function handleWordClick(word, element) {
+  hideError();
   sentenceAudioController.stop();
   setActiveHit(element);
   currentWordText = word.text;
@@ -858,6 +859,7 @@ function handleWordClick(word, element) {
 }
 
 function handleSentenceClick(sentence, element) {
+  hideError();
   wordAudioController.stop();
   setActiveHit(element);
   currentWordText = '';

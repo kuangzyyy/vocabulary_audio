@@ -89,12 +89,19 @@ built successfully
 - 前端 `ePub(url, { openAs: 'epub' })` 读取 `/api/epubs/{id}/file`；文件接口没有 `.epub` 后缀，必须显式指定 `openAs`，否则 EPUB.js 会按目录请求 `META-INF/container.xml`。
 - `flow: "scrolled-doc"` 保留可重排正文和章节结构；不修改原书 HTML。
 - 点击通过 iframe 内 `caretRangeFromPoint`/`caretPositionFromPoint` 取文本节点，再用纯函数扩展单词和切分句子。
-- iframe 尺寸变化通过 `ResizeObserver` 调用 `rendition.resize(width, height)`；仅依赖 EPUB.js 的 window resize 不足以保证手机宽度重排。
+- iframe 在阅读区**宽度**变化时通过 `ResizeObserver` 调用 `rendition.resize(width, height)`；仅依赖 EPUB.js 的 window resize 不足以保证手机宽度重排。结果栏高度变化不会触发重排，避免点击单词后 iframe 被重建。
 - 字号通过 `rendition.themes.fontSize` 设置；100% 时移除覆盖。
 - 章节切换通过 `relocated` 事件更新标签/目录高亮，并重置旧音频。
 - 打开 EPUB 成功后释放 PDF；切到 PDF/照片时调用 `book.destroy()` 释放 EPUB rendition。
 
-## 4. 未验证
+## 4. 2026-10-20 修复记录
+
+- 点击 EPUB 单词后，结果栏高度变化会触发整章 `rendition.resize`，清空 iframe 并丢失单词高亮；已改为只在阅读区宽度变化时重排。
+- 点击单词/整句时自动关闭之前的错误横幅，避免恢复旧内容后错误提示一直残留。
+- 增加“首次 location 未知时不 resize”的保护，避免极早期 resize 清空视图但没有 CFI 可恢复，留下空白 EPUB 面板。
+- 浏览器复测：单词高亮在 500 ms 后仍存在；结果栏展开后 iframe 不重建；390×844 宽度变化仍能重排。
+
+## 5. 未验证
 
 - 真实手机相机、原生文件选择框、真实多点触控。
 - iOS Safari / Android 浏览器；当前仅 Chromium。

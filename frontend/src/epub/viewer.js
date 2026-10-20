@@ -520,14 +520,15 @@ export class EpubViewer {
       if (!width || !height) {
         return;
       }
-      if (
-        Math.abs(width - this.lastWidth) <= 1 &&
-        Math.abs(height - this.lastHeight) <= 1
-      ) {
+      const widthChanged = Math.abs(width - this.lastWidth) > 1;
+      this.lastHeight = height;
+      if (!widthChanged) {
+        // The result panel changes height when a word is selected. Reflowing
+        // the whole chapter for that would clear the iframe and the word
+        // highlight, so only a width change (window/orientation) resizes.
         return;
       }
       this.lastWidth = width;
-      this.lastHeight = height;
       if (!this.rendition?.location?.start?.cfi) {
         // A resize before the first location is known would clear the view
         // without a CFI to restore it, leaving a blank EPUB pane.
