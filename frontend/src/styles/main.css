@@ -56,7 +56,7 @@ button {
 
 .app {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   height: 100dvh;
   min-height: 0;
 }
@@ -200,14 +200,62 @@ input:focus-visible,
 /* Empty state */
 
 .empty-state {
+  grid-row: 2;
   min-height: 0;
   overflow: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2rem;
+  gap: 1.5rem;
   padding: clamp(1.25rem, 4vw, 3rem);
+}
+
+.photo-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.2rem;
+  width: min(760px, 100%);
+  padding: 1.1rem 1.25rem;
+  border: 1px solid rgb(56 189 248 / 20%);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgb(14 165 233 / 12%), rgb(129 140 248 / 8%)),
+    rgb(17 28 49 / 58%);
+}
+
+.photo-entry-copy {
+  min-width: 0;
+}
+
+.photo-entry-kicker {
+  display: inline-block;
+  padding: 0.18rem 0.5rem;
+  border: 1px solid rgb(56 189 248 / 35%);
+  border-radius: 999px;
+  color: #7dd3fc;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+}
+
+.photo-entry h2 {
+  margin: 0.5rem 0 0;
+  font-size: clamp(1.15rem, 3vw, 1.5rem);
+  letter-spacing: -0.02em;
+}
+
+.photo-entry p {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.photo-actions {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  flex: none;
 }
 
 .drop-zone {
@@ -296,8 +344,18 @@ input:focus-visible,
 /* Viewer shell */
 
 .viewer {
+  grid-row: 2;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.photo-viewer {
+  grid-row: 2;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -457,6 +515,56 @@ input:focus-visible,
   background: #fff;
 }
 
+.photo-body {
+  grid-row: 3;
+  min-height: 0;
+  min-width: 0;
+}
+
+.photo-viewport {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 20%, rgb(56 189 248 / 6%), transparent 24rem),
+    #0a1221;
+  touch-action: none;
+  overscroll-behavior: contain;
+  cursor: grab;
+}
+
+.photo-viewport.is-panning {
+  cursor: grabbing;
+}
+
+.photo-stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  background: #fff;
+  box-shadow:
+    0 24px 70px rgb(2 6 23 / 55%),
+    0 0 0 1px rgb(148 163 184 / 16%);
+  border-radius: 2px;
+  overflow: hidden;
+  will-change: transform;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#photo-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+
+.photo-viewport .page-loading {
+  z-index: 20;
+}
+
 .sentence-layer,
 .word-layer {
   position: absolute;
@@ -472,19 +580,23 @@ input:focus-visible,
   z-index: 2;
 }
 
-.page-stage.mode-sentence .sentence-layer {
+.page-stage.mode-sentence .sentence-layer,
+.click-stage.mode-sentence .sentence-layer {
   z-index: 3;
 }
 
-.page-stage.mode-sentence .word-layer {
+.page-stage.mode-sentence .word-layer,
+.click-stage.mode-sentence .word-layer {
   z-index: 1;
 }
 
-.page-stage.mode-sentence .word-hit {
+.page-stage.mode-sentence .word-hit,
+.click-stage.mode-sentence .word-hit {
   pointer-events: none;
 }
 
-.page-stage.mode-sentence .sentence-hit:hover {
+.page-stage.mode-sentence .sentence-hit:hover,
+.click-stage.mode-sentence .sentence-hit:hover {
   background: rgb(251 191 36 / 16%);
   box-shadow: inset 0 0 0 1px rgb(251 191 36 / 55%);
 }
@@ -562,7 +674,7 @@ input:focus-visible,
 /* Result panel */
 
 .result-panel {
-  grid-row: 4;
+  grid-row: 3;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -854,8 +966,25 @@ input:focus-visible,
 
   .empty-state {
     justify-content: flex-start;
-    gap: 1.25rem;
+    gap: 1rem;
     padding: 1rem;
+  }
+
+  .photo-entry {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .photo-actions .button {
+    flex: 1;
+  }
+
+  .photo-toolbar {
+    gap: 0.5rem;
+  }
+
+  .photo-viewport {
+    min-height: 0;
   }
 
   .drop-zone {

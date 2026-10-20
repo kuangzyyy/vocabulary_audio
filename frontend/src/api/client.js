@@ -61,6 +61,28 @@ export async function fetchSentenceAudio(text) {
   return response.json();
 }
 
+export async function uploadPhoto(file) {
+  const form = new FormData();
+  form.append('file', file, file.name);
+  const response = await fetch('/api/photos', {
+    method: 'POST',
+    body: form,
+  });
+  if (!response.ok) {
+    throw await toError(response);
+  }
+  return response.json();
+}
+
+export async function deletePhoto(photoId) {
+  const response = await fetch(`/api/photos/${encodeURIComponent(photoId)}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok && response.status !== 404) {
+    throw await toError(response);
+  }
+}
+
 export function bookFileUrl(bookId) {
   return `/api/books/${encodeURIComponent(bookId)}/file`;
 }

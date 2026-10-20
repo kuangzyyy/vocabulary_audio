@@ -32,9 +32,6 @@ required_python_packages = [
     ("pymupdf", "PyMuPDF"),
     ("PIL", "Pillow"),
     ("multipart", "python-multipart"),
-]
-
-optional_ocr_packages = [
     ("rapidocr", "RapidOCR"),
     ("onnxruntime", "ONNX Runtime"),
 ]
@@ -131,12 +128,6 @@ def main():
             missing_packages.append(display_name)
     if missing_packages:
         failures += 1
-
-    print()
-    print("Optional OCR packages (Phase 3, not required for PDF reading)")
-    for module_name, display_name in optional_ocr_packages:
-        found = importlib.util.find_spec(module_name) is not None
-        report(found, display_name, "installed" if found else "not installed")
 
     print()
     print("Frontend packages")

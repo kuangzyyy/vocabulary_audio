@@ -2,14 +2,14 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#0f172a" />
     <meta
       name="description"
       content="本地优先的英语 PDF 与纸质书照片点读工具。"
     />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <title>Vocabulary Audio · PDF 点读</title>
+    <title>Vocabulary Audio · PDF 与照片点读</title>
   </head>
   <body>
     <div id="app" class="app">
@@ -18,7 +18,7 @@
           <img class="brand-icon" src="/favicon.svg" alt="" width="40" height="40" />
           <div class="brand-copy">
             <h1>Vocabulary Audio</h1>
-            <p>PDF 原版页面点读 · 真人单词 / 合成整句</p>
+            <p>PDF / 纸质书照片点读</p>
           </div>
         </div>
         <div class="topbar-actions">
@@ -26,11 +26,27 @@
           <button id="open-file-button" class="button primary" type="button">
             打开 PDF
           </button>
+          <button id="open-photo-button" class="button" type="button">
+            照片
+          </button>
           <input
             id="file-input"
             class="visually-hidden"
             type="file"
             accept="application/pdf,.pdf"
+          />
+          <input
+            id="photo-input"
+            class="visually-hidden"
+            type="file"
+            accept="image/*"
+          />
+          <input
+            id="camera-input"
+            class="visually-hidden"
+            type="file"
+            accept="image/*"
+            capture="environment"
           />
         </div>
       </header>
@@ -49,6 +65,26 @@
             也可以把文件拖到这里 · 打开后可切换单词/整句模式 · 文件只保存在本机
           </p>
         </div>
+
+        <div class="photo-entry">
+          <div class="photo-entry-copy">
+            <span class="photo-entry-kicker">手机纸质书</span>
+            <h2>拍一页书，在照片上点读</h2>
+            <p>
+              拍摄或选择一页纸质书照片，本机 OCR 后在原照片上点单词或整句。
+              照片不会上传到第三方云端。
+            </p>
+          </div>
+          <div class="photo-actions">
+            <button id="take-photo-button" class="button primary" type="button">
+              拍照点读
+            </button>
+            <button id="choose-photo-button" class="button" type="button">
+              从相册选择
+            </button>
+          </div>
+        </div>
+
         <div class="feature-list" aria-label="当前版本能力">
           <article>
             <span>01</span>
@@ -58,7 +94,7 @@
           <article>
             <span>02</span>
             <h3>点词 / 点句</h3>
-            <p>显式切换点击模式，单词和句子点击不互相误触，缩放滚动仍对齐。</p>
+            <p>显式切换点击模式，单词和句子点击不互相误触，缩放拖动仍对齐。</p>
           </article>
           <article>
             <span>03</span>
@@ -75,14 +111,14 @@
             <span id="book-pages"></span>
           </div>
 
-          <div class="toolbar-group click-mode" role="group" aria-label="点击模式">
+          <div class="toolbar-group click-mode" role="group" aria-label="PDF 点击模式">
             <span class="click-mode-label">点击</span>
             <button
               id="mode-word"
               class="mode-button"
               type="button"
               aria-pressed="true"
-              aria-label="单词模式"
+              aria-label="PDF 单词模式"
               title="点单词播放单词发音"
             >单词</button>
             <button
@@ -90,7 +126,7 @@
               class="mode-button"
               type="button"
               aria-pressed="false"
-              aria-label="整句模式"
+              aria-label="PDF 整句模式"
               title="点句子播放本机合成语音"
             >整句</button>
           </div>
@@ -127,7 +163,7 @@
 
         <div class="viewer-body">
           <div id="page-scroll" class="page-scroll" tabindex="0">
-            <div id="page-stage" class="page-stage is-empty">
+            <div id="page-stage" class="page-stage click-stage">
               <canvas id="pdf-canvas" aria-label="PDF 原始页面"></canvas>
               <div id="sentence-layer" class="sentence-layer"></div>
               <div id="word-layer" class="word-layer"></div>
@@ -137,54 +173,115 @@
             </div>
           </div>
         </div>
+      </section>
 
-        <div id="result-panel" class="result-panel" aria-live="polite">
-          <div class="result-copy">
-            <span class="result-label">当前识别</span>
-            <strong id="recognized-text">点击页面上的英文单词</strong>
-            <div class="result-meta-row">
-              <span id="recognized-meta" class="result-meta">
-                点单词播放真人录音；整句模式播放本机合成语音
-              </span>
-              <div id="accent-controls" class="accent-controls" hidden></div>
-            </div>
-            <div id="audio-source" class="audio-source" hidden>
-              <span>发音来源：</span>
-              <a
-                id="audio-source-link"
-                href="#"
-                target="_blank"
-                rel="noopener noreferrer"
-              >Wikimedia Commons</a>
-              <span>·</span>
-              <a
-                id="audio-license-link"
-                href="#"
-                target="_blank"
-                rel="noopener noreferrer"
-              ></a>
-              <span id="audio-attribution"></span>
-            </div>
-            <div id="synthetic-note" class="synthetic-note" hidden>
-              本机 Windows 系统语音合成生成，不是真人录音。
-            </div>
+      <section id="photo-viewer" class="photo-viewer" hidden>
+        <div class="viewer-toolbar photo-toolbar">
+          <div class="book-meta">
+            <strong id="photo-name">未选择照片</strong>
+            <span id="photo-size"></span>
           </div>
-          <div class="result-side">
-            <span id="synthetic-badge" class="synthetic-badge" hidden>
-              合成语音
-            </span>
-            <div id="play-indicator" class="play-indicator">
-              <span class="play-bars" aria-hidden="true"><i></i><i></i><i></i></span>
-              <span id="play-text">真人发音</span>
-            </div>
-            <button id="replay-button" class="button small" type="button" hidden>
-              重播
+
+          <div class="toolbar-group click-mode" role="group" aria-label="照片点击模式">
+            <span class="click-mode-label">点击</span>
+            <button
+              id="photo-mode-word"
+              class="mode-button"
+              type="button"
+              aria-pressed="true"
+              aria-label="照片单词模式"
+              title="点照片中的单词播放发音"
+            >单词</button>
+            <button
+              id="photo-mode-sentence"
+              class="mode-button"
+              type="button"
+              aria-pressed="false"
+              aria-label="照片整句模式"
+              title="点照片中的句子播放整句合成语音"
+            >整句</button>
+          </div>
+
+          <div class="toolbar-group" aria-label="照片缩放">
+            <button id="photo-zoom-out" class="button square" type="button" aria-label="缩小">
+              −
             </button>
+            <span id="photo-zoom-label" class="zoom-label">100%</span>
+            <button id="photo-zoom-in" class="button square" type="button" aria-label="放大">
+              +
+            </button>
+            <button id="photo-reset" class="button" type="button">重置</button>
           </div>
-          <audio id="word-audio" class="visually-hidden" preload="auto"></audio>
-          <audio id="sentence-audio" class="visually-hidden" preload="auto"></audio>
+
+          <div class="toolbar-group" aria-label="照片操作">
+            <button id="photo-retake" class="button" type="button">重新拍摄</button>
+            <button id="photo-replace" class="button" type="button">替换照片</button>
+            <button id="photo-clear" class="button" type="button">清空</button>
+          </div>
+        </div>
+
+        <div id="photo-message" class="message-bar" role="status" hidden></div>
+
+        <div class="photo-body">
+          <div id="photo-viewport" class="photo-viewport">
+            <div id="photo-stage" class="photo-stage click-stage">
+              <img id="photo-image" alt="纸质书页面照片" draggable="false" />
+              <div id="photo-sentence-layer" class="sentence-layer"></div>
+              <div id="photo-word-layer" class="word-layer"></div>
+            </div>
+            <div id="photo-loading" class="page-loading" role="status" hidden>
+              正在识别照片…
+            </div>
+          </div>
         </div>
       </section>
+
+      <div id="result-panel" class="result-panel" aria-live="polite" hidden>
+        <div class="result-copy">
+          <span class="result-label">当前识别</span>
+          <strong id="recognized-text">点击页面上的英文单词</strong>
+          <div class="result-meta-row">
+            <span id="recognized-meta" class="result-meta">
+              单词模式点单词；整句模式点句子
+            </span>
+            <div id="accent-controls" class="accent-controls" hidden></div>
+          </div>
+          <div id="audio-source" class="audio-source" hidden>
+            <span>发音来源：</span>
+            <a
+              id="audio-source-link"
+              href="#"
+              target="_blank"
+              rel="noopener noreferrer"
+            >Wikimedia Commons</a>
+            <span>·</span>
+            <a
+              id="audio-license-link"
+              href="#"
+              target="_blank"
+              rel="noopener noreferrer"
+            ></a>
+            <span id="audio-attribution"></span>
+          </div>
+          <div id="synthetic-note" class="synthetic-note" hidden>
+            本机 Windows 系统语音合成生成，不是真人录音。
+          </div>
+        </div>
+        <div class="result-side">
+          <span id="synthetic-badge" class="synthetic-badge" hidden>
+            合成语音
+          </span>
+          <div id="play-indicator" class="play-indicator">
+            <span class="play-bars" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span id="play-text">真人发音</span>
+          </div>
+          <button id="replay-button" class="button small" type="button" hidden>
+            重播
+          </button>
+        </div>
+        <audio id="word-audio" class="visually-hidden" preload="auto"></audio>
+        <audio id="sentence-audio" class="visually-hidden" preload="auto"></audio>
+      </div>
 
       <div id="error-banner" class="error-banner" role="alert" hidden>
         <div>

@@ -42,44 +42,48 @@
 
 ## 2. 当前阶段与状态
 
-**阶段 3：整句点读（2026-10-20 完成）**
+**阶段 4：手机纸质书照片点读（2026-10-20 完成）**
 
 已完成：
 
-- Phase 1 的 PDF 原版渲染、单词/句子坐标、点击层、翻页/缩放/滚动全部保留。
-- **点词 / 点句模式**：工具栏显式切换，避免单词和句子点击互相误触。
-  - 单词模式：单词优先；点击句子空白处也可播整句。
-  - 整句模式：句子层位于单词层之上，点击例句任意位置（包括单词）播放整句。
-- 整句使用本机 Windows SAPI / System.Speech 生成 WAV；接口和 UI 明确 `synthetic: true`，显示“合成语音（非真人录音）”。
-- 没有把单词录音拼接成整句，也没有把 TTS 标成真人录音。
-- 整句 WAV 缓存到 `data/audio_cache/`，旁边保存 engine、voice、locale、生成时间。
-- 重复点击整句重用缓存；切换句子/单词会停止旧音频；加载、失败、重播有明确状态。
-- 单词真人录音流程保持不变，PDF 点读、翻页、缩放、滚动验收不回归。
-- 后端 55 个测试、前端 12 个测试、生产构建和真实浏览器端到端验收通过。
+- Phase 1–3 的 PDF 原版渲染、单词/句子点击、真单词录音、点词/点句、整句 TTS 全部保留。
+- 手机照片入口：相册选择 + `capture="environment"` 拍照入口。
+- 照片上传到本机 FastAPI，Pillow 做 EXIF 方向校正并生成显示图/OCR 图。
+- RapidOCR 3.10.0 `return_word_box=True` 直接返回英文单词框；没有从行框推算或伪造单词框。
+- 原照片显示在页面上，透明单词/句子点击层按归一化坐标覆盖。
+- 照片支持双指缩放、拖动、鼠标滚轮缩放和工具栏缩放；图片与点击框在同一个 transform 容器中。
+- 照片支持重新拍摄、替换、清空；清空会删除当前本地照片文件。
+- 空白、中文、倾斜、OCR 失败、无单词级坐标都有明确提示；不会生成假点击框。
+- 共享底部音频结果栏，PDF 和照片复用单词/整句音频控制器。
+- 后端 67 个测试、前端 12 个测试、生产构建和移动尺寸浏览器端到端验收通过。
 
-尚未实现：
+尚未实现 / 未验证：
 
-- 真人整句录音（没有可靠合法通用来源；当前用本机 TTS）。
-- 手机照片 OCR 和照片点击层（RapidOCR 依赖未安装）。
+- 真实手机相机和原生文件选择框的人工验收（自动化环境无法操作）。
+- 真实手机多点触控手感的人工验收（已用 390×844 视口和 PointerEvent 验证）。
+- 真人整句录音（当前为明确标记的本机 TTS）。
 - EPUB、收藏、学习记录。
 - 扫描版 PDF 的 OCR。
 
-阶段 3 完成标准：
+阶段 4 完成标准：
 
-- [x] 点击单词播放单词真人录音。
-- [x] 整句模式点击例句播放整句音频。
-- [x] 点词/点句是显式模式，两种点击不会频繁误触。
-- [x] 整句音频明确标记为合成语音，不冒充真人。
-- [x] 整句音频本地缓存，重复点击不重复合成。
-- [x] 整句 TTS 失败有明确提示，页面不崩溃。
-- [x] 翻页、缩放、滚动后整句点击框仍准确。
-- [x] PDF 原版布局没有改成重排文章。
-- [ ] 原生文件选择框人工确认（自动化环境限制）。
+- [x] 提供图片导入和手机拍照入口（真实相机需人工验收）。
+- [x] 网页显示原始照片，而不是 OCR 重排文字。
+- [x] OCR 返回单词级坐标并直接使用；缺失时不伪造。
+- [x] 点击照片单词播放单词真人录音。
+- [x] 整句模式点击照片句子播放整句 TTS（明确合成语音）。
+- [x] 支持照片缩放、拖动，操作后点击框仍对齐。
+- [x] 支持重新拍摄、替换、清空照片。
+- [x] 模糊/空白/中文/倾斜/OCR 失败有明确提示。
+- [x] 照片只在本机处理，不上传第三方 OCR。
+- [x] PDF 功能不回归。
+- [ ] 真实手机相机 / 多点触控人工验收。
 
-阶段 1/2 的历史完成标准仍成立：
+阶段 1–3 的历史完成标准仍成立：
 
 - [x] PDF 点读、翻页、缩放、滚动、旋转页对齐；扫描页提示。
 - [x] 单词真人录音、来源/许可、美式/英式选择、本地缓存；无录音明确提示。
+- [x] 整句点词/点句模式、本机 TTS、合成语音标记、WAV 缓存。
 - [x] 环境、规则、目录、`.gitignore` 已建立。
 
 ## 3. 技术选型（2026-10-20 确定）
@@ -95,8 +99,9 @@
 | PDF 显示 | PDF.js (`pdfjs-dist`) | 6.4.x | 保留原始排版，开源、浏览器兼容性好 |
 | 音频（Phase 2） | Wikimedia Commons + 本地缓存 | 官方 API / HTMLAudioElement | 逐文件许可、真人录音、来源可追溯；缓存避免重复下载；不用 TTS 冒充 |
 | 整句音频（Phase 3） | Windows SAPI / System.Speech | 本机 TTS + WAV 缓存 | 可缓存、无云端、明确标记合成语音；不拼接单词录音 |
-| 数据存储 | 文件系统 + SQLite（后续） | Python 内置 sqlite3 | Phase 3 只需要文件；收藏/记录阶段再引入 SQLite |
-| 测试 | pytest + FastAPI TestClient + Node test runner | pytest 9.x / Node 24 | 后端 API/缓存/坐标测试、前端坐标与音频 UI 测试 |
+| 照片显示（Phase 4） | 原生图片 + Pointer Events | 百分比点击层 + CSS transform | 原图显示；图片和点击框同容器缩放/拖动 |
+| 数据存储 | 文件系统 + SQLite（后续） | Python 内置 sqlite3 | Phase 4 只需要文件；收藏/记录阶段再引入 SQLite |
+| 测试 | pytest + FastAPI TestClient + Node test runner | pytest 9.x / Node 24 | 后端 API/缓存/坐标/OCR 测试、前端坐标与音频 UI 测试 |
 | 代码检查 | Ruff | 0.17.x | 一个工具完成格式与基础 lint，初学者易用 |
 
 ### 3.1 当前机器环境基线
@@ -105,12 +110,12 @@
 - Node.js：24.18.0（满足 PDF.js / Vite 要求）。
 - npm：11.16.0（可用；npm registry 可访问）。
 - Git：2.55.0（已配置用户名和邮箱）。
-- `.venv` 已安装：FastAPI 0.150.0、Uvicorn 0.54.0、PyMuPDF 1.26.5、python-multipart 0.0.32、Pillow 11.3.0、pytest 9.1.1、httpx 0.28.1、Ruff 0.17.1。
+- `.venv` 已安装：FastAPI 0.150.0、Uvicorn 0.54.0、PyMuPDF 1.26.5、python-multipart 0.0.32、Pillow 11.3.0、RapidOCR 3.10.0、ONNX Runtime 1.31.0、pytest 9.1.1、httpx 0.28.1、Ruff 0.17.1。
 - 前端已安装：`pdfjs-dist` 6.4.299、Vite 8.3.4。
 - 音频功能不需要新增 Python 包或 API Key；单词优先使用系统 `curl` 访问 Wikimedia，`urllib` 作为兜底。
 - 整句 TTS 使用 Windows PowerShell + `System.Speech`；本机已安装 Microsoft Zira/David（en-US）。
+- 照片 OCR 使用 RapidOCR + ONNX Runtime，模型随包提供；不需要 Tesseract。
 - 默认对 Wikimedia 直连（`VOCABULARY_AUDIO_USE_PROXY=0`）；如网络必须走系统代理，可设置 `VOCABULARY_AUDIO_USE_PROXY=1`。
-- **未安装** RapidOCR 和 ONNX Runtime；Phase 4 实现照片 OCR 时执行 `pip install -r requirements-ocr.txt`。
 - 未安装 Tesseract（本方案不需要）、Docker（本方案不需要）。
 - PyPI 直连较慢，安装时使用了清华镜像；依赖版本仍以 requirements 文件为准。
 
@@ -140,40 +145,42 @@ vocabulary_audio/
 ├── AGENTS.md                 # 本文件：协作规则、技术选型、验收标准
 ├── README.md                 # 面向初学者的安装、启动和使用说明
 ├── .gitignore                # 阻止环境、缓存、私人数据和密钥入库
-├── requirements.txt          # Phase 1/2 后端运行依赖
+├── requirements.txt          # 后端核心运行依赖
 ├── requirements-dev.txt      # 测试与代码检查依赖
-├── requirements-ocr.txt      # Phase 4 OCR 依赖（当前未安装）
+├── requirements-ocr.txt      # 照片 OCR 依赖（已安装）
 ├── pyproject.toml            # pytest / ruff 配置
 ├── backend/
 │   ├── app/
 │   │   ├── main.py           # FastAPI 入口、统一错误映射
-│   │   ├── config.py         # 数据目录、上传限制、音频 User-Agent/代理
-│   │   ├── api/              # health.py + books.py + audio.py
-│   │   ├── services/         # books、pdf_extractor、audio_provider、audio_service、sentence_audio、wikimedia_http
+│   │   ├── config.py         # 数据目录、上传限制、音频/照片设置
+│   │   ├── api/              # health.py + books.py + audio.py + photos.py
+│   │   ├── services/         # books、pdf_extractor、photo_ocr、audio、sentence_audio、wikimedia_http
 │   │   └── models/           # Pydantic 请求/响应模型
-│   └── tests/                # 坐标、提取、单词音频、整句 TTS、API 测试
+│   └── tests/                # 坐标、提取、单词音频、整句 TTS、照片 OCR、API 测试
 ├── frontend/
 │   ├── index.html            # 阅读界面
 │   ├── package.json          # 前端依赖与脚本
 │   ├── vite.config.js        # 开发服务器和 /api 代理
 │   ├── tests/                # 坐标和音频 UI 单元测试
 │   └── src/
-│       ├── main.js           # 点词/点句、音频状态、工具栏
+│       ├── main.js           # PDF/照片切换、音频状态、工具栏
 │       ├── api/              # 后端请求封装
 │       ├── pdf/              # PDF.js 渲染、点击层、坐标函数
-│       ├── photo/            # 照片显示与点击层（Phase 4）
+│       ├── photo/            # 照片显示、缩放拖动、点击层
 │       ├── audio/            # 单词/整句音频播放、口音和合成语音标记
 │       └── styles/           # 样式
 ├── data/                     # 运行时私人数据，全部被 git 忽略
 │   ├── books/                # 用户 PDF
-│   ├── photos/               # 用户照片
+│   ├── photos/               # 校正后的用户照片 + 元数据
 │   └── audio_cache/          # 真人录音和 TTS WAV 缓存 + JSON 元数据
 ├── docs/
 │   ├── environment.md        # 环境检查报告
 │   ├── audio-source.md       # 单词录音/整句 TTS、许可、API 礼仪和替代方案
+│   ├── photo-ocr.md          # OCR 方法、单词框、句子切分和限制
 │   ├── phase1-acceptance.md  # Phase 1 测试与浏览器验收记录
 │   ├── phase2-acceptance.md  # Phase 2 真人单词发音验收记录
-│   └── phase3-acceptance.md  # Phase 3 整句点读验收记录
+│   ├── phase3-acceptance.md  # Phase 3 整句点读验收记录
+│   └── phase4-acceptance.md  # Phase 4 手机照片点读验收记录
 └── scripts/
     ├── check_env.py          # 随时重新检查本机环境
     └── tts_sapi.ps1          # Windows SAPI 本机整句语音合成
@@ -202,12 +209,13 @@ vocabulary_audio/
 ### 5.2 手机端照片
 
 1. 手机浏览器用 `<input type="file" accept="image/*" capture="environment">` 拍照或选图。
-2. 图片上传到本机后端，保存到 `data/photos/`。
-3. 后端先做 EXIF 方向校正，再缩小到适合 OCR 的尺寸（长边约 2000px）。
-4. RapidOCR 返回文字行和字符/单词坐标。
-5. 服务层把字符框合并成单词框，并按图片宽高归一化。
-6. 前端显示图片和透明点击层，单词/句子播放发音。
-7. 原始照片和识别文本只留在本机。
+2. 图片上传到本机后端；校验大小/格式/像素，保存到 `data/photos/`。
+3. Pillow 先做 EXIF 方向校正，再生成显示图（长边最多 3000px）和 OCR 图（长边最多 2000px）。
+4. RapidOCR 使用 `return_word_box=True`；英文实测直接返回单词框。
+5. 如果 OCR 只返回字符级/行级结果，**不生成假单词框**；字符级检测到后回退为整行句子点击，并给出提示。
+6. 所有坐标按 OCR 图宽高归一化；前端图片和点击层放在同一个可缩放/拖动的 `photo-stage` 中。
+7. 句子按 OCR 阅读顺序和句末标点切分；每行一个 `segment` 点击框。
+8. 原始照片（校正后）和最小元数据只留在本机；OCR 文本不写入日志；不调用云 OCR。
 
 ### 5.3 音频
 
@@ -286,8 +294,9 @@ y 轴：向下
 | POST | `/api/books` | 已实现 | 上传 PDF，返回 book_id、页数、标题和大小 |
 | GET | `/api/books/{book_id}/file` | 已实现 | 返回原 PDF 给 PDF.js 渲染 |
 | GET | `/api/books/{book_id}/pages/{page}` | 已实现 | 返回该页单词、行、句子和归一化坐标 |
-| POST | `/api/photos` | Phase 4 | 上传照片并执行 OCR |
-| GET | `/api/photos/{photo_id}/file` | Phase 4 | 返回校正方向后的照片 |
+| POST | `/api/photos` | 已实现 | 上传照片、EXIF 校正、RapidOCR，返回单词/行/句子和归一化坐标 |
+| GET | `/api/photos/{photo_id}/file` | 已实现 | 返回校正方向后的 JPEG 照片 |
+| DELETE | `/api/photos/{photo_id}` | 已实现 | 删除当前照片和元数据 |
 | GET | `/api/audio/word?text=...&accent=auto` | 已实现 | 查询/下载真人单词录音，返回口音、可用口音、来源和许可 |
 | GET | `/api/audio/sentence?text=...` | 已实现 | 本机 TTS 生成/缓存整句 WAV，明确返回 `synthetic: true` |
 | GET | `/api/audio/cache/{cache_id}` | 已实现 | 返回本地缓存的单词音频或整句 WAV |
@@ -302,6 +311,9 @@ y 轴：向下
 - 单词音频响应必须包含 `source_page`、`provider`、`license`、`attribution` 和 `audio_url`；前端必须展示来源和许可证。
 - 整句音频响应必须包含 `synthetic: true`、`engine`、`voice`、`locale`、`note` 和 `audio_url`；空句子/无英文/超过 500 字符返回 400，TTS 不可用返回 503。
 - `SentenceItem` 必须返回 `segments`（每行一个 `line_id` + bbox），前端按片段渲染点击框；`bbox` 仍作为整句联合区域调试用。
+- `POST /api/photos` 接受图片 multipart，最大 25 MB；先做 EXIF 方向校正，再 OCR。返回 `photo_url`、`width/height`、`has_text`、`has_english`、`message`、`quality_warning`、`word_box_method` 以及 `words/lines/sentences`。
+- 照片单词框必须直接来自 RapidOCR `return_word_box=True`；没有单词框时返回空 `words` 并提示，禁止从行框推算假单词。
+- 照片接口错误：无效/空/过小图片 400，超过大小 413，OCR 处理失败可在 201 响应中带明确 `message`；照片文件仍可显示。
 - 音频缓存文件与 JSON 元数据只能位于 `data/audio_cache/`；`cache_id` 必须是 64 位十六进制 SHA-256；单词和整句共用同一缓存目录和读取接口。
 
 页面数据示例（当前返回格式）：
@@ -397,9 +409,10 @@ y 轴：向下
 py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 
-# 2. 安装后端依赖
+# 2. 安装后端依赖（含照片 OCR）
 python -m pip install --upgrade pip
 pip install -r requirements-dev.txt
+pip install -r requirements-ocr.txt
 
 # 3. 启动后端
 uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000
@@ -419,9 +432,6 @@ npm run build
 
 # 7. 重新检查本机环境
 python scripts/check_env.py
-
-# 8. Phase 4 才需要：安装照片 OCR 依赖
-pip install -r requirements-ocr.txt
 ```
 
 启动后：
@@ -497,7 +507,25 @@ pip install -r requirements-ocr.txt
 - [x] 后端 55 个测试、前端 12 个测试通过；Ruff 和前端构建通过。
 - [ ] 原生文件选择框人工确认（自动化环境限制）。
 
-### MVP 验收（Phase 1–3）
+### 阶段 4 验收（已完成）
+
+- [x] 提供相册选择和 `capture="environment"` 拍照入口。
+- [x] 上传照片后显示原始照片，而不是 OCR 重排文字。
+- [x] EXIF Orientation=6 的图片宽高正确交换。
+- [x] RapidOCR 英文直接返回单词框（49 个单词的页面测试）；没有从行框伪造。
+- [x] 没有单词框/字符级结果时不生成假单词点击，给出提示。
+- [x] 空白图片、中文图片、倾斜 7° 图片都有明确处理。
+- [x] 手机尺寸 390×844 下点击照片单词播放真人录音，结果显示正确。
+- [x] 整句模式点击照片句子播放整句 TTS，明确标记合成语音。
+- [x] 156% 工具栏缩放、180% 双指缩放、拖动后点击框与图片/bbox 对齐。
+- [x] 156% 缩放下点击 `brown` 结果正确，说明变换后的命中区域有效。
+- [x] 支持重新拍摄、替换照片、清空；清空删除当前照片文件。
+- [x] 共享结果栏后 PDF 功能不回归。
+- [x] 后端 67 个测试、前端 12 个测试通过；Ruff 和前端构建通过。
+- [ ] 真实手机相机和原生文件选择框人工验收。
+- [ ] 真实手机多点触控手感人工验收。
+
+### MVP 验收（Phase 1–4）
 
 电脑端：
 
@@ -510,17 +538,18 @@ pip install -r requirements-ocr.txt
 
 手机端：
 
-- [ ] 能拍照或从相册导入照片。
-- [ ] 横拍、竖拍照片方向正确。
-- [ ] OCR 后能在照片上点单词和句子。
-- [ ] 照片放大/缩小后点击框仍对齐。
-- [ ] 处理过程中没有数据发往外部网络（音频例外：未缓存单词文本会发送到 Wikimedia Commons）。
+- [x] 能拍照或从相册导入照片（入口已实现；真实相机需人工验收）。
+- [x] 横拍、竖拍照片方向正确（EXIF 方向校正和测试）。
+- [x] OCR 后能在照片上点单词和句子。
+- [x] 照片放大/缩小/拖动后点击框仍对齐。
+- [x] 照片只在本机 OCR；未上传第三方云端（单词音频网络查询是例外）。
 
 隐私与工程：
 
 - [x] 默认监听 `127.0.0.1`；手机测试仅通过可信局域网。
 - [x] `data/`、`.venv/`、`node_modules/`、`.env` 未进入 Git。
 - [x] 音频只发送被点击的单词文本，不发送书籍/照片/整页内容；整句文本只在本机处理。
+- [x] 照片只在本机 OCR，不上传第三方云端；清空照片会删除当前本地文件。
 - [x] 单词音频来源、许可证、作者保存在缓存元数据并在界面展示。
 - [x] 整句音频始终标记为合成语音，不冒充真人。
 - [x] `python -m pytest` 全部通过。
@@ -558,16 +587,20 @@ pip install -r requirements-ocr.txt
 - **音频格式**：单词优先 MP3；整句为 WAV。当前浏览器验证基于 Chromium；其他浏览器对 OGG/WAV 的支持需另行验证。
 - **缓存增长**：缓存不会自动清理；移除缓存会丢失来源/许可元数据，清理策略尚未实现。
 - **来源变化**：Wikimedia 文件可能被重命名或删除；已缓存音频仍可播放，但来源页可能失效。
-- **扫描版 PDF**：没有文本层，当前只提示、不 OCR；后续可把页面渲染成图片后复用照片 OCR。
-- **OCR 依赖尚未安装**：RapidOCR/ONNX Runtime 未进入 `.venv`，Phase 4 前需执行 `pip install -r requirements-ocr.txt`。
-- **OCR 词框**：RapidOCR 的词级结果可能是字符级框，需要按空格和标点合并成英文单词；必须用真实书页照片验证。
-- **OCR 准确率**：低清晰度、倾斜、反光、手写批注都会降低效果；MVP 先接受并展示识别结果，不做自动纠错。
+- **扫描版 PDF**：没有文本层，当前只提示、不 OCR；照片 OCR 已实现，可作为后续扩展复用。
+- **OCR 依赖**：RapidOCR/ONNX Runtime 已安装到 `.venv`，模型随包提供；不再需要 Tesseract。
+- **OCR 单词框**：英文实测 RapidOCR 直接返回单词框；不从行框推算。若某些结果只有字符/行级框，代码会回退为句子点击并提示，不伪造单词。
+- **OCR 准确率**：低清晰度、模糊、倾斜/透视、反光、手写、多栏页面都会降低效果；当前没有去倾斜/去模糊/版面分析。
+- **OCR 阅读顺序**：多栏页面的 OCR 顺序可能不是自然阅读顺序，句子切分可能跨栏。
+- **照片大小**：最大 25 MB、8000 万像素；显示长边 3000px、OCR 长边 2000px。超大照片会被缩小，坐标归一化后仍对齐。
+- **照片清空**：清空会删除当前 `data/photos/{id}.jpg` 和元数据；替换/切换会删除旧照片。
+- **真实手机相机/多点触控**：自动化无法操作系统相机和原生文件选择框；已用 390×844 视口和 PointerEvent 验证，需人工真机验收。
 - **PDF 兼容性**：损坏、下载不完整或异常结构的 PDF 可能被 PDF.js 拒绝；当前会显示错误。PyMuPDF 和 PDF.js 对异常文件的宽容度不同。
 - **原生文件选择框**：自动化环境无法操作系统文件对话框；已通过文件输入 `change` 事件和拖放路径验证同一处理逻辑，仍需人工点击一次确认。
 - **移动端网络**：手机访问依赖同一 Wi-Fi 和防火墙放行；Vite 开发服务器不适合长期公开运行。
 - **PyMuPDF 许可证**：AGPL-3.0 或商业许可；分发前必须复核。
 - **大文件**：大 PDF 和高分辨率照片要限制大小，按页/按需处理，避免一次读入全部内容。
-- **隐私例外**：未缓存单词的文本会发送到 Wikimedia Commons；整句文本只发送到本机后端。不得把书籍/照片/整页内容或身份信息附带发送。
+- **隐私例外**：未缓存单词的文本会发送到 Wikimedia Commons；整句文本只发送到本机后端；照片只在本机 OCR。不得把书籍/照片/整页内容或身份信息发送给第三方。
 
 ## 13. 路线图
 
@@ -577,14 +610,15 @@ pip install -r requirements-ocr.txt
 | Phase 1 | PDF 上传 + PyMuPDF 文字/坐标 + PDF.js 渲染 + 单词点击 + 翻页/缩放/滚动 | 已完成 |
 | Phase 2 | Wikimedia Commons 真人单词录音 + 来源/许可 + 口音选择 + 本地缓存 | 已完成 |
 | Phase 3 | 整句点读：点词/点句模式 + 本机 TTS + 合成语音标记 + WAV 缓存 | 已完成 |
-| Phase 4 | 手机拍照/选图 + RapidOCR + 照片点击层 | 待开始 |
+| Phase 4 | 手机拍照/选图 + RapidOCR + 照片点击层 + 缩放拖动 | 已完成 |
 | Phase 5 | 真人整句音频评估、EPUB、收藏、学习记录 | 后续 |
 
-**下一阶段默认 Phase 4 手机照片 OCR；不要提前实现 Phase 5。真人整句音频仍需单独评估来源。**
+**下一阶段默认 Phase 5（真人整句音频评估、EPUB/收藏/学习记录）；真实手机相机和多点触控仍需人工验收。**
 
 ## 14. 变更记录
 
 - **2026-10-20**：完成阶段 0；确定 Python 3.12 + FastAPI + PyMuPDF + RapidOCR + Vite/PDF.js 技术栈；创建项目骨架。
 - **2026-10-20**：完成 Phase 1；实现 PDF 上传、逐页单词/句子/坐标提取、PDF.js 原版渲染、透明点击层、翻页/缩放/滚动、模拟反馈、错误处理；后端 23 个测试、前端 6 个测试和真实 PDF 浏览器验收通过。
 - **2026-10-20**：完成 Phase 2；接入 Wikimedia Commons 合法真人单词录音，加入逐文件许可/作者校验、美式/英式选择、本地缓存和来源展示；后端 48 个测试、前端 12 个测试、真实浏览器音频验收通过。
-- **2026-10-20**：完成 Phase 3；加入点词/点句模式、本机 Windows SAPI 整句 TTS、WAV 缓存、合成语音标记和整句失败提示；后端 55 个测试、前端 12 个测试、真实浏览器验收通过。真人整句录音仍未实现。
+- **2026-10-20**：完成 Phase 3；加入点词/点句模式、本机 Windows SAPI 整句 TTS、WAV 缓存、合成语音标记和整句失败提示；后端 55 个测试、前端 12 个测试、真实浏览器验收通过。
+- **2026-10-20**：完成 Phase 4；加入照片上传/拍照入口、EXIF 校正、RapidOCR 单词框、原图点击层、缩放拖动、点词/点句、清空/替换和错误提示；后端 67 个测试、前端 12 个测试、390×844 移动视口验收通过。真实手机相机和多点触控仍需人工验收。

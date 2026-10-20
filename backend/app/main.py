@@ -12,7 +12,8 @@ from backend.app import APP_VERSION
 from backend.app.api.audio import router as audio_router
 from backend.app.api.books import router as books_router
 from backend.app.api.health import router as health_router
-from backend.app.services.errors import AudioError, PdfError
+from backend.app.api.photos import router as photos_router
+from backend.app.services.errors import AudioError, PdfError, PhotoError
 
 app = FastAPI(
     title="Vocabulary Audio",
@@ -46,6 +47,13 @@ async def audio_error_handler(request: Request, exc: AudioError) -> JSONResponse
     return JSONResponse(status_code=exc.status_code, content={"detail": str(exc)})
 
 
+@app.exception_handler(PhotoError)
+async def photo_error_handler(request: Request, exc: PhotoError) -> JSONResponse:
+    """Return predictable JSON errors for photo validation and OCR failures."""
+    return JSONResponse(status_code=exc.status_code, content={"detail": str(exc)})
+
+
 app.include_router(health_router)
 app.include_router(books_router)
 app.include_router(audio_router)
+app.include_router(photos_router)

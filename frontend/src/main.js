@@ -1,9 +1,10 @@
 import './styles/main.css';
 
-import { fetchSentenceAudio, fetchWordAudio, uploadPdf } from './api/client.js';
+import { fetchSentenceAudio, fetchWordAudio, deletePhoto, uploadPdf, uploadPhoto } from './api/client.js';
 import { accentLabel, accentOptions } from './audio/audioMeta.js';
 import { AudioPlaybackController } from './audio/audioPlayback.js';
 import { PdfViewer } from './pdf/viewer.js';
+import { PhotoViewer } from './photo/viewer.js';
 
 function byId(id) {
   const element = document.getElementById(id);
@@ -15,11 +16,35 @@ function byId(id) {
 
 const dom = {
   openFileButton: byId('open-file-button'),
+  openPhotoButton: byId('open-photo-button'),
   chooseFileButton: byId('choose-file-button'),
+  choosePhotoButton: byId('choose-photo-button'),
+  takePhotoButton: byId('take-photo-button'),
   fileInput: byId('file-input'),
+  photoInput: byId('photo-input'),
+  cameraInput: byId('camera-input'),
   emptyState: byId('empty-state'),
   dropZone: byId('drop-zone'),
   viewer: byId('viewer'),
+  photoViewer: byId('photo-viewer'),
+  photoName: byId('photo-name'),
+  photoSize: byId('photo-size'),
+  photoMessage: byId('photo-message'),
+  photoViewport: byId('photo-viewport'),
+  photoStage: byId('photo-stage'),
+  photoImage: byId('photo-image'),
+  photoSentenceLayer: byId('photo-sentence-layer'),
+  photoWordLayer: byId('photo-word-layer'),
+  photoLoading: byId('photo-loading'),
+  photoModeWord: byId('photo-mode-word'),
+  photoModeSentence: byId('photo-mode-sentence'),
+  photoZoomOut: byId('photo-zoom-out'),
+  photoZoomIn: byId('photo-zoom-in'),
+  photoZoomLabel: byId('photo-zoom-label'),
+  photoReset: byId('photo-reset'),
+  photoRetake: byId('photo-retake'),
+  photoReplace: byId('photo-replace'),
+  photoClear: byId('photo-clear'),
   bookName: byId('book-name'),
   bookPages: byId('book-pages'),
   modeWord: byId('mode-word'),
@@ -60,7 +85,10 @@ const dom = {
 };
 
 let activeBook = null;
+let currentPhoto = null;
+let activeSource = null;
 let fileBusy = false;
+let photoBusy = false;
 let resizeTimer = 0;
 let activeHitElement = null;
 let renderedPage = 0;
@@ -211,6 +239,28 @@ const viewer = new PdfViewer(
   },
 );
 
+const photoViewer = new PhotoViewer(
+  {
+    viewport: dom.photoViewport,
+    stage: dom.photoStage,
+    image: dom.photoImage,
+    sentenceLayer: dom.photoSentenceLayer,
+    wordLayer: dom.photoWordLayer,
+    loading: dom.photoLoading,
+  },
+  {
+    onWordClick: (word, element) => {
+      handleWordClick(word, element);
+    },
+    onSentenceClick: (sentence, element) => {
+      handleSentenceClick(sentence, element);
+    },
+    onZoomChange: (scale) => {
+      updatePhotoZoomLabel(scale);
+    },
+  },
+);
+
 setClickMode(clickMode);
 
 function readClickMode() {
@@ -228,7 +278,10 @@ function setClickMode(mode) {
   const sentenceMode = clickMode === 'sentence';
   dom.modeWord.setAttribute('aria-pressed', String(!sentenceMode));
   dom.modeSentence.setAttribute('aria-pressed', String(sentenceMode));
+  dom.photoModeWord.setAttribute('aria-pressed', String(!sentenceMode));
+  dom.photoModeSentence.setAttribute('aria-pressed', String(sentenceMode));
   viewer.setClickMode(clickMode);
+  photoViewer.setClickMode(clickMode);
   try {
     localStorage.setItem('vocabulary-audio-click-mode', clickMode);
   } catch {
@@ -237,6 +290,10 @@ function setClickMode(mode) {
   if (!activeHitElement) {
     dom.recognizedMeta.textContent = clickModeHint();
   }
+}
+
+function updatePhotoZoomLabel(scale) {
+  dom.photoZoomLabel.textContent = `${Math.round(scale * 100)}%`;
 }
 
 function clickModeHint() {
@@ -253,14 +310,32 @@ function requestFilePicker() {
 
 function setFileBusy(busy) {
   fileBusy = busy;
+  updateBusyControls();
+}
+
+function setPhotoBusy(busy) {
+  photoBusy = busy;
+  updateBusyControls();
+}
+
+function updateBusyControls() {
+  const busy = fileBusy || photoBusy;
   dom.fileInput.disabled = busy;
+  dom.photoInput.disabled = busy;
+  dom.cameraInput.disabled = busy;
   dom.openFileButton.disabled = busy;
+  dom.openPhotoButton.disabled = busy;
   dom.chooseFileButton.disabled = busy;
-  dom.openFileButton.textContent = busy ? '正在打开…' : '打开 PDF';
+  dom.choosePhotoButton.disabled = busy;
+  dom.takePhotoButton.disabled = busy;
+  dom.photoReplace.disabled = busy;
+  dom.photoRetake.disabled = busy;
+  dom.photoClear.disabled = busy;
+  dom.openFileButton.textContent = fileBusy ? '正在打开…' : '打开 PDF';
 }
 
 async function handleFile(file) {
-  if (!file || fileBusy) {
+  if (!file || fileBusy || photoBusy) {
     return;
   }
 
@@ -279,9 +354,19 @@ async function handleFile(file) {
 
   try {
     const book = await uploadPdf(file);
+    const previousPhoto = currentPhoto;
+    currentPhoto = null;
+    photoViewer.clear();
+    hidePhotoMessage();
+    if (previousPhoto) {
+      void deletePhoto(previousPhoto.photo_id).catch(() => {});
+    }
     activeBook = book;
+    activeSource = 'pdf';
     dom.emptyState.hidden = true;
+    dom.photoViewer.hidden = true;
     dom.viewer.hidden = false;
+    dom.resultPanel.hidden = false;
     dom.bookName.textContent = book.filename;
     dom.bookPages.textContent = `${book.page_count} 页`;
     renderedPage = 0;
@@ -294,12 +379,146 @@ async function handleFile(file) {
       wordAudioController.stop();
       sentenceAudioController.stop();
       dom.viewer.hidden = true;
-      dom.emptyState.hidden = false;
+      if (!currentPhoto) {
+        showEmptyState();
+      }
     }
   } finally {
     setFileBusy(false);
     dom.fileInput.value = '';
   }
+}
+
+async function handlePhoto(file) {
+  if (!file || photoBusy || fileBusy) {
+    return;
+  }
+
+  const name = (file.name || '').toLowerCase();
+  const imageLike =
+    (file.type || '').startsWith('image/') ||
+    /\.(jpe?g|png|webp|bmp)$/i.test(name);
+  if (!imageLike) {
+    showError('请选择图片文件（JPG、PNG 或 WebP）。');
+    return;
+  }
+  if (file.size === 0) {
+    showError('这张图片是空的，请重新选择。');
+    return;
+  }
+
+  const previousPhoto = currentPhoto;
+  setPhotoBusy(true);
+  hideError();
+  hidePhotoMessage();
+  activeSource = 'photo';
+  dom.emptyState.hidden = true;
+  dom.viewer.hidden = true;
+  dom.photoViewer.hidden = false;
+  dom.resultPanel.hidden = false;
+  dom.photoName.textContent = file.name;
+  dom.photoSize.textContent = '识别中…';
+  photoViewer.setLoading(true, '正在上传并识别照片…');
+  resetResult('正在识别照片…');
+
+  try {
+    const photo = await uploadPhoto(file);
+    currentPhoto = photo;
+    dom.photoName.textContent = photo.filename;
+    dom.photoSize.textContent = `${photo.width} × ${photo.height}`;
+    await photoViewer.load(photo);
+    dom.resultPanel.hidden = false;
+    resetResult();
+    showPhotoMessage(photo);
+    if (previousPhoto && previousPhoto.photo_id !== photo.photo_id) {
+      void deletePhoto(previousPhoto.photo_id).catch(() => {});
+    }
+  } catch (error) {
+    photoViewer.setLoading(false);
+    showError(requestErrorMessage(error));
+    if (previousPhoto) {
+      currentPhoto = previousPhoto;
+      activeSource = 'photo';
+      try {
+        await photoViewer.load(previousPhoto);
+        dom.photoViewer.hidden = false;
+        dom.resultPanel.hidden = false;
+        resetResult();
+      } catch {
+        currentPhoto = null;
+        photoViewer.clear();
+        if (viewer.hasDocument) {
+          activeSource = 'pdf';
+          dom.photoViewer.hidden = true;
+          dom.viewer.hidden = false;
+          dom.resultPanel.hidden = false;
+          resetResult();
+        } else {
+          showEmptyState();
+        }
+      }
+    } else if (viewer.hasDocument) {
+      activeSource = 'pdf';
+      dom.photoViewer.hidden = true;
+      dom.viewer.hidden = false;
+      dom.emptyState.hidden = true;
+      dom.resultPanel.hidden = false;
+      resetResult();
+    } else {
+      showEmptyState();
+    }
+  } finally {
+    setPhotoBusy(false);
+    dom.photoInput.value = '';
+    dom.cameraInput.value = '';
+  }
+}
+
+async function clearPhoto() {
+  if (!currentPhoto || photoBusy || fileBusy) {
+    return;
+  }
+  const photoId = currentPhoto.photo_id;
+  setPhotoBusy(true);
+  try {
+    await deletePhoto(photoId);
+  } catch (error) {
+    showError(requestErrorMessage(error));
+  } finally {
+    showEmptyState();
+    setPhotoBusy(false);
+  }
+}
+
+function showPhotoMessage(photo) {
+  const parts = [photo.message, photo.quality_warning].filter(Boolean);
+  if (parts.length === 0) {
+    hidePhotoMessage();
+    return;
+  }
+  dom.photoMessage.textContent = parts.join(' ');
+  dom.photoMessage.hidden = false;
+  dom.photoMessage.classList.add('is-warning');
+}
+
+function hidePhotoMessage() {
+  dom.photoMessage.hidden = true;
+  dom.photoMessage.textContent = '';
+  dom.photoMessage.classList.remove('is-warning');
+}
+
+function showEmptyState() {
+  wordAudioController.stop();
+  sentenceAudioController.stop();
+  activeSource = null;
+  currentPhoto = null;
+  photoViewer.clear();
+  dom.photoViewer.hidden = true;
+  dom.viewer.hidden = true;
+  dom.emptyState.hidden = false;
+  dom.resultPanel.hidden = true;
+  hidePhotoMessage();
+  resetResult();
 }
 
 function requestErrorMessage(error) {
@@ -499,7 +718,10 @@ function resetResult(text) {
     .forEach((node) => node.classList.remove('is-active'));
   activeHitElement = null;
   dom.recognizedText.textContent =
-    text || (clickMode === 'sentence' ? '点击页面上的句子' : '点击页面上的英文单词');
+    text ||
+    (clickMode === 'sentence'
+      ? `点击${activeSource === 'photo' ? '照片' : '页面'}中的句子`
+      : `点击${activeSource === 'photo' ? '照片' : '页面'}中的英文单词`);
   dom.recognizedMeta.textContent = clickModeHint();
   clearAudioDetails();
   setPlayState('idle', clickMode === 'sentence' ? '合成语音' : '真人发音');
@@ -569,6 +791,37 @@ dom.fileInput.addEventListener('change', () => {
   }
 });
 
+const requestPhotoPicker = () => {
+  if (!photoBusy && !fileBusy) {
+    dom.photoInput.click();
+  }
+};
+const requestCamera = () => {
+  if (!photoBusy && !fileBusy) {
+    dom.cameraInput.click();
+  }
+};
+dom.openPhotoButton.addEventListener('click', requestPhotoPicker);
+dom.choosePhotoButton.addEventListener('click', requestPhotoPicker);
+dom.takePhotoButton.addEventListener('click', requestCamera);
+dom.photoInput.addEventListener('change', () => {
+  const file = dom.photoInput.files?.[0];
+  if (file) {
+    void handlePhoto(file);
+  }
+});
+dom.cameraInput.addEventListener('change', () => {
+  const file = dom.cameraInput.files?.[0];
+  if (file) {
+    void handlePhoto(file);
+  }
+});
+dom.photoReplace.addEventListener('click', requestPhotoPicker);
+dom.photoRetake.addEventListener('click', requestCamera);
+dom.photoClear.addEventListener('click', () => {
+  void clearPhoto();
+});
+
 for (const eventName of ['dragenter', 'dragover']) {
   dom.dropZone.addEventListener(eventName, (event) => {
     event.preventDefault();
@@ -595,6 +848,21 @@ dom.modeWord.addEventListener('click', () => {
 });
 dom.modeSentence.addEventListener('click', () => {
   setClickMode('sentence');
+});
+dom.photoModeWord.addEventListener('click', () => {
+  setClickMode('word');
+});
+dom.photoModeSentence.addEventListener('click', () => {
+  setClickMode('sentence');
+});
+dom.photoZoomIn.addEventListener('click', () => {
+  photoViewer.zoomBy(1.25);
+});
+dom.photoZoomOut.addEventListener('click', () => {
+  photoViewer.zoomBy(0.8);
+});
+dom.photoReset.addEventListener('click', () => {
+  photoViewer.reset();
 });
 
 dom.prevPage.addEventListener('click', () => {
@@ -666,10 +934,13 @@ window.addEventListener('resize', () => {
   window.clearTimeout(resizeTimer);
   resizeTimer = window.setTimeout(() => {
     void viewer.handleResize();
+    photoViewer.handleResize();
   }, 180);
 });
 
 if (activeBook === null) {
   dom.viewer.hidden = true;
+  dom.photoViewer.hidden = true;
+  dom.resultPanel.hidden = true;
   dom.emptyState.hidden = false;
 }

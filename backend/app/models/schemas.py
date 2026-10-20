@@ -76,3 +76,20 @@ class SentenceAudioInfo(BaseModel):
     audio_url: str
     cached: bool
     note: str
+
+
+class PhotoData(BaseModel):
+    photo_id: str
+    filename: str
+    width: int
+    height: int
+    photo_url: str
+    has_text: bool
+    has_english: bool
+    message: str | None = None
+    quality_warning: str | None = None
+    word_box_method: str
+    ocr_engine: str
+    words: list[WordItem]
+    lines: list[LineItem]
+    sentences: list[SentenceItem]

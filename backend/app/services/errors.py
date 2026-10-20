@@ -73,3 +73,25 @@ class InvalidSentenceError(AudioError):
 
 class SentenceTtsError(AudioError):
     status_code = 503
+
+
+class PhotoError(Exception):
+    """Base class for photo upload/OCR errors."""
+
+    status_code = 400
+
+
+class InvalidPhotoError(PhotoError):
+    status_code = 400
+
+
+class PhotoTooLargeError(PhotoError):
+    status_code = 413
+
+
+class PhotoOcrError(PhotoError):
+    status_code = 422
+
+
+class PhotoNotFoundError(PhotoError):
+    status_code = 404
