@@ -1,14 +1,17 @@
 """FastAPI application entry point.
 
-Phase 0 intentionally exposes only the health check. PDF, OCR and audio
-routes are added in later phases.
+Phase 1 exposes the health check plus the minimal PDF reading API: upload a
+book, serve the original PDF to PDF.js, and extract positioned words per page.
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from backend.app import APP_VERSION
+from backend.app.api.books import router as books_router
 from backend.app.api.health import router as health_router
+from backend.app.services.errors import PdfError
 
 app = FastAPI(
     title="Vocabulary Audio",
@@ -29,4 +32,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.exception_handler(PdfError)
+async def pdf_error_handler(request: Request, exc: PdfError) -> JSONResponse:
+    """Return predictable JSON errors for upload and extraction failures."""
+    return JSONResponse(status_code=exc.status_code, content={"detail": str(exc)})
+
+
 app.include_router(health_router)
+app.include_router(books_router)

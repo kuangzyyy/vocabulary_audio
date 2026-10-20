@@ -1,6 +1,9 @@
 # 开发依赖（测试、代码检查）
 -r requirements.txt
 
+# 测试中用于生成“扫描页”图片
+pillow==11.3.0
+
 pytest==9.1.1
 httpx==0.28.1
 ruff==0.17.1

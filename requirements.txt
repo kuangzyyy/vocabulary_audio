@@ -1,4 +1,4 @@
-# Vocabulary Audio 后端运行依赖
+# Vocabulary Audio 后端运行依赖（Phase 1：PDF 点读）
 # 要求 Python 3.12.x；安装步骤见 README.md。
 
 fastapi==0.150.0
@@ -7,10 +7,5 @@ uvicorn[standard]==0.54.0
 # PDF 文本与坐标提取
 pymupdf==1.26.5
 
-# 照片 OCR（模型随包提供，不需要 Tesseract）
-rapidocr==3.10.0
-onnxruntime==1.31.0
-pillow==11.3.0
-
-# FastAPI 文件上传（Phase 1/3 使用）
+# FastAPI 文件上传
 python-multipart==0.0.32

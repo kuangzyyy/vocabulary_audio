@@ -19,7 +19,8 @@
    - 对照片做 OCR，得到文字和坐标。
    - 在照片上点击单词或句子，播放发音。
 3. **本地优先的音频**
-   - MVP 使用浏览器自带的 SpeechSynthesis 发声。
+   - Phase 1 使用 Web Audio 播放短提示音，并显示明显的“模拟播放”反馈。
+   - 不冒充真人发音；真人音频和缓存留到 Phase 4。
    - 不依赖云端服务，不上传书籍、照片或识别文本。
 
 ### 后续阶段才考虑
@@ -40,31 +41,42 @@
 
 ## 2. 当前阶段与状态
 
-**阶段 0：环境与项目骨架（2026-10-20）**
+**阶段 1：PDF 原版页面点读（2026-10-20 完成）**
 
 已完成：
 
-- 检查 Windows 开发环境。
-- 创建项目目录、规则、README、依赖清单和忽略规则。
-- 创建最小 FastAPI 健康检查接口（`GET /api/health`）。
-- 创建 Vite + 原生 JavaScript 的前端占位页。
-- 初始化 Git 仓库（未提交）。
+- Python 3.12.10 + `.venv`；安装 Phase 1 必需依赖。
+- PDF 上传、本地存储、原文件服务和逐页数据 API。
+- PyMuPDF 英文单词、行、句子和坐标提取；支持 0/90/180/270 旋转归一化。
+- PDF.js 原版页面渲染；透明单词/句子点击层。
+- 点击单词显示准确识别文本和本地模拟提示音；点击句子空白处显示整句。
+- 翻页、页码输入、缩放、适合宽度、滚动；缩放/滚动后点击层保持对齐。
+- 扫描页、空白页、非英文页的明确提示；空文件、非 PDF、加密、页码越界、提取失败的错误处理。
+- 后端 23 个测试、前端 6 个坐标测试、生产构建和真实 PDF 浏览器验收通过。
 
 尚未实现：
 
-- PDF 上传、文本提取和单词/句子坐标。
-- PDF.js 页面渲染与点击层。
-- 照片上传、OCR、照片点击层。
-- 单词/句子发音。
-- 音频缓存。
+- 真人发音和音频缓存。
+- 手机照片 OCR 和照片点击层（RapidOCR 依赖未安装）。
+- EPUB、收藏、学习记录。
+- 扫描版 PDF 的 OCR。
 
-阶段 0 的完成标准：
+阶段 1 完成标准：
+
+- [x] 能打开真实 PDF（4 页自建测试 PDF + 15 页 arXiv 论文）。
+- [x] 能在原版页面上点击英文单词，结果文本正确。
+- [x] 翻页、缩放、滚动、90° 旋转页后点击位置仍对齐。
+- [x] 扫描版页面明确提示，不伪造文字。
+- [x] 错误路径有自动化测试或浏览器验证。
+- [x] 测试、构建和运行方式已写入 README。
+- [ ] 浏览器原生文件选择框由人工再确认一次（自动化环境无法操作系统文件对话框）。
+
+阶段 0 的历史完成标准：
 
 - [x] 环境检查结果清晰，知道哪些依赖可用、哪些缺失。
 - [x] 项目规则和基础目录已创建。
 - [x] `.gitignore` 能阻止虚拟环境、缓存、私人书籍/照片、密钥入库。
 - [x] README 能让初学者按步骤完成环境准备和启动。
-- [x] 没有提前实现 PDF/OCR/音频等后续功能。
 
 ## 3. 技术选型（2026-10-20 确定）
 
@@ -77,20 +89,22 @@
 | 照片 OCR | RapidOCR + ONNX Runtime CPU | rapidocr 3.10.x / onnxruntime 1.31.x | 纯 pip 安装、模型随包提供、有文字坐标、支持中英文、无需 Tesseract |
 | 前端构建 | Vite + 原生 JavaScript | Vite 8.x | 无需先学 React/Vue；热更新快，配置少 |
 | PDF 显示 | PDF.js (`pdfjs-dist`) | 6.4.x | 保留原始排版，开源、浏览器兼容性好 |
-| 音频（MVP） | 浏览器 SpeechSynthesis | 浏览器内置 | 合法、零成本、无网络依赖；后续再接入并缓存合法音频 |
-| 数据存储 | 文件系统 + SQLite（后续） | Python 内置 sqlite3 | MVP 只需要文件；收藏/记录阶段再引入 SQLite |
-| 测试 | pytest + FastAPI TestClient | pytest 9.x | 与 FastAPI 集成简单 |
+| 音频（Phase 1） | Web Audio 模拟提示音 | 浏览器内置 | 合法、零成本、无网络依赖；真人音频和缓存留到 Phase 4 |
+| 数据存储 | 文件系统 + SQLite（后续） | Python 内置 sqlite3 | Phase 1 只需要文件；收藏/记录阶段再引入 SQLite |
+| 测试 | pytest + FastAPI TestClient + Node test runner | pytest 9.x / Node 24 | 后端 API/坐标测试、前端百分比坐标测试 |
 | 代码检查 | Ruff | 0.17.x | 一个工具完成格式与基础 lint，初学者易用 |
 
 ### 3.1 当前机器环境基线
 
-- Python：3.9.6（**不满足要求**，需要安装 Python 3.12）。
+- Python：**3.12.10**，项目 `.venv` 已创建。
 - Node.js：24.18.0（满足 PDF.js / Vite 要求）。
 - npm：11.16.0（可用；npm registry 可访问）。
 - Git：2.55.0（已配置用户名和邮箱）。
-- 全局 Python 包里有 PyMuPDF 1.26.5，但项目必须使用自己的 `.venv`，不要依赖全局包。
-- 未安装 FastAPI、Uvicorn、RapidOCR、ONNX Runtime、python-multipart。
+- `.venv` 已安装：FastAPI 0.150.0、Uvicorn 0.54.0、PyMuPDF 1.26.5、python-multipart 0.0.32、Pillow 11.3.0、pytest 9.1.1、httpx 0.28.1、Ruff 0.17.1。
+- 前端已安装：`pdfjs-dist` 6.4.299、Vite 8.3.4。
+- **未安装** RapidOCR 和 ONNX Runtime；Phase 3 实现照片 OCR 时执行 `pip install -r requirements-ocr.txt`。
 - 未安装 Tesseract（本方案不需要）、Docker（本方案不需要）。
+- PyPI 直连较慢，安装时使用了清华镜像；依赖版本仍以 requirements 文件为准。
 
 ### 3.2 为什么不用其他方案
 
@@ -118,33 +132,37 @@ vocabulary_audio/
 ├── AGENTS.md                 # 本文件：协作规则、技术选型、验收标准
 ├── README.md                 # 面向初学者的安装、启动和使用说明
 ├── .gitignore                # 阻止环境、缓存、私人数据和密钥入库
-├── requirements.txt          # 后端运行依赖
+├── requirements.txt          # Phase 1 后端运行依赖
 ├── requirements-dev.txt      # 测试与代码检查依赖
+├── requirements-ocr.txt      # Phase 3 OCR 依赖（当前未安装）
 ├── pyproject.toml            # pytest / ruff 配置
 ├── backend/
 │   ├── app/
-│   │   ├── main.py           # FastAPI 应用入口（当前只有健康检查）
-│   │   ├── api/              # HTTP 路由，一个功能一个模块
-│   │   ├── services/         # PDF、OCR、音频等业务逻辑（后续实现）
-│   │   └── models/           # Pydantic 请求/响应模型（后续实现）
-│   └── tests/                # pytest 测试
+│   │   ├── main.py           # FastAPI 入口、统一错误映射
+│   │   ├── config.py         # 数据目录、上传大小限制
+│   │   ├── api/              # health.py + books.py
+│   │   ├── services/         # books.py、pdf_extractor.py、errors.py
+│   │   └── models/           # Pydantic 请求/响应模型
+│   └── tests/                # 坐标、提取、API 测试
 ├── frontend/
-│   ├── index.html            # 页面入口
+│   ├── index.html            # 阅读界面
 │   ├── package.json          # 前端依赖与脚本
 │   ├── vite.config.js        # 开发服务器和 /api 代理
+│   ├── tests/                # 坐标映射单元测试
 │   └── src/
-│       ├── main.js           # 前端入口（当前为占位页）
-│       ├── api/              # 后端请求封装（后续）
-│       ├── pdf/              # PDF.js 渲染与点击层（后续）
-│       ├── photo/            # 照片显示与点击层（后续）
-│       ├── audio/            # 发音播放与缓存（后续）
+│       ├── main.js           # 文件选择、结果栏、工具栏
+│       ├── api/              # 后端请求封装
+│       ├── pdf/              # PDF.js 渲染、点击层、坐标函数
+│       ├── photo/            # 照片显示与点击层（Phase 3）
+│       ├── audio/            # 模拟提示音（真人音频 Phase 4）
 │       └── styles/           # 样式
 ├── data/                     # 运行时私人数据，全部被 git 忽略
 │   ├── books/                # 用户 PDF
 │   ├── photos/               # 用户照片
 │   └── audio_cache/          # 后续的合法音频缓存
 ├── docs/
-│   └── environment.md        # 本次环境检查报告
+│   ├── environment.md        # 环境检查报告
+│   └── phase1-acceptance.md  # Phase 1 测试与浏览器验收记录
 └── scripts/
     └── check_env.py          # 随时重新检查本机环境
 ```
@@ -180,21 +198,20 @@ vocabulary_audio/
 
 ### 5.3 音频
 
-MVP：
+Phase 1：
 
-- 使用 `window.speechSynthesis`。
-- 选择英文语音（优先 `en-US`，其次 `en-GB`）。
-- 播放前先 `cancel()`，避免多个音频叠加。
-- 移动端必须在用户点击事件中触发播放（浏览器自动播放限制）。
-- 如果设备没有英文语音，给出可理解的提示，而不是静默失败。
+- 使用 Web Audio 生成很短的提示音，并在结果栏显示“模拟播放中…”和动画。
+- 点击单词或句子必须在用户手势事件中触发，符合浏览器自动播放限制。
+- 如果 Web Audio 不可用，只保留视觉反馈，不阻断点读。
+- **不要声称这是单词或句子的真实发音。**
 
-后续（有真人音频需求时）：
+后续（Phase 4，有真人音频需求时）：
 
-- 定义统一的 `AudioProvider` 接口，UI 不关心音频来自 TTS 还是缓存文件。
+- 定义统一的 `AudioProvider` 接口，UI 不关心音频来自缓存文件还是 TTS。
 - 只使用明确允许使用的来源（例如 Wikimedia Commons/Wiktionary 中标注了许可证的音频）。
 - 缓存键建议：`sha256(规范化文本 + 语言 + 来源/语音)`。
 - 每个缓存文件旁边保存 JSON 元数据：文本、语言、来源 URL、许可证、署名、获取时间。
-- 下载失败或没有合适音频时，回退到浏览器 TTS。
+- 下载失败或没有合适音频时，回退到浏览器 TTS 或只显示文字提示。
 - 禁止抓取未授权接口或绕过服务条款。
 
 ## 6. 坐标契约（最容易出错，必须遵守）
@@ -219,41 +236,53 @@ y 轴：向下
 6. 任何涉及坐标的新功能，都必须补一个单元测试，至少覆盖：普通页面、缩放比例变化、旋转页面（PDF）、横竖照片（OCR）。
 7. 点击层必须和 canvas/图片使用同一个容器尺寸；缩放时一起重算。
 
-## 7. API 草案（阶段 0 只实现了健康检查）
+## 7. API 实现状态
 
-| 方法 | 路径 | 阶段 | 作用 |
+| 方法 | 路径 | 状态 | 作用 |
 | --- | --- | --- | --- |
 | GET | `/api/health` | 已实现 | 返回服务状态，用于确认环境 |
-| POST | `/api/books` | Phase 1 | 上传 PDF，返回 book_id、页数 |
-| GET | `/api/books/{book_id}/file` | Phase 1 | 返回 PDF 文件给 PDF.js 渲染 |
-| GET | `/api/books/{book_id}/pages/{page}` | Phase 1 | 返回该页单词、行、句子和坐标 |
+| POST | `/api/books` | 已实现 | 上传 PDF，返回 book_id、页数、标题和大小 |
+| GET | `/api/books/{book_id}/file` | 已实现 | 返回原 PDF 给 PDF.js 渲染 |
+| GET | `/api/books/{book_id}/pages/{page}` | 已实现 | 返回该页单词、行、句子和归一化坐标 |
 | POST | `/api/photos` | Phase 3 | 上传照片并执行 OCR |
 | GET | `/api/photos/{photo_id}/file` | Phase 3 | 返回校正方向后的照片 |
 | GET | `/api/audio/{cache_id}` | Phase 4 | 返回已缓存的合法音频 |
 | POST | `/api/audio/speak` | Phase 4 | 按文本查找/生成音频（可选） |
 
-页面数据示例（未来实现的目标格式）：
+实现约定：
+
+- `POST /api/books` 使用 multipart 上传，默认最大 100 MB；文件用 UUID 重命名，元数据写入 `data/books/{book_id}.json`。
+- 上传会校验文件头、能否打开、是否加密、是否至少有一页；错误通过统一 JSON `{"detail": "中文说明"}` 返回。
+- `pages/{page}` 的页码从 1 开始；页码越界返回 404，提取异常返回 422。
+- 扫描页不是错误：返回 `has_text=false`、`is_scanned=true` 和明确 `message`。
+
+页面数据示例（当前返回格式）：
 
 ```json
 {
+  "book_id": "0123456789abcdef0123456789abcdef",
   "page": 1,
+  "page_count": 10,
   "width": 612,
   "height": 792,
   "rotation": 0,
+  "has_text": true,
+  "is_scanned": false,
+  "message": null,
   "words": [
     {
-      "id": "w-1",
+      "id": "w-1-0-0",
       "text": "example",
       "bbox": [0.12, 0.24, 0.2, 0.26],
-      "line_id": "l-1",
-      "sentence_id": "s-1"
+      "line_id": "l-1-0",
+      "sentence_id": "s-1-0"
     }
   ],
   "lines": [
-    { "id": "l-1", "text": "This is an example sentence.", "bbox": [0.1, 0.24, 0.6, 0.26] }
+    { "id": "l-1-0", "text": "This is an example sentence.", "bbox": [0.1, 0.24, 0.6, 0.26] }
   ],
   "sentences": [
-    { "id": "s-1", "text": "This is an example sentence.", "bbox": [0.1, 0.24, 0.6, 0.26] }
+    { "id": "s-1-0", "text": "This is an example sentence.", "bbox": [0.1, 0.24, 0.6, 0.26] }
   ]
 }
 ```
@@ -321,11 +350,12 @@ uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000
 
 # 4. 运行后端测试与代码检查
 python -m pytest
-ruff check backend
+ruff check backend scripts
 
 # 5. 安装并启动前端（另开一个终端）
 cd frontend
 npm install
+npm test
 npm run dev
 
 # 6. 构建前端
@@ -333,6 +363,9 @@ npm run build
 
 # 7. 重新检查本机环境
 python scripts/check_env.py
+
+# 8. Phase 3 才需要：安装照片 OCR 依赖
+pip install -r requirements-ocr.txt
 ```
 
 启动后：
@@ -351,25 +384,44 @@ python scripts/check_env.py
 
 ## 11. 测试与验收
 
-### 阶段 0 验收（本阶段）
+### 阶段 0 验收（历史，已完成）
 
 - [x] `python scripts/check_env.py` 能清楚列出已安装/缺失项。
 - [x] Python 版本不足、需要安装 3.12 的事实已写入 README 和环境报告。
 - [x] 目录结构、AGENTS.md、README.md、`.gitignore` 已创建。
-- [x] 后端健康检查代码存在（需安装 Python 3.12 依赖后可运行）。
+- [x] 后端健康检查代码存在。
 - [x] 前端占位页能通过 `npm run build`。
 - [x] 工作区原有文件未被删除（检查时工作区为空）。
+
+### 阶段 1 验收（已完成）
+
+- [x] 打开自建的 4 页测试 PDF（含扫描页和 90° 旋转页）。
+- [x] 打开真实的 15 页 arXiv PDF，页面和文字层正常。
+- [x] 原版页面由 PDF.js 渲染，没有用重排文本替代。
+- [x] 点击单词后，识别结果与页面文字一致（`sentence`、`Navigation`、`attribution`、`Rotated`）。
+- [x] 点击句子内空白处，显示并模拟播放整句。
+- [x] 翻页、页码输入（Enter）正常。
+- [x] 缩放（205% → 245%）后，点击框相对 canvas 的位置与后端 bbox 一致。
+- [x] 滚动 700px 后，点击框相对 canvas 的位置仍一致。
+- [x] 90° 旋转页保持横向显示，点击框仍在正确位置。
+- [x] 扫描页返回明确提示，且没有生成假单词框。
+- [x] 损坏 PDF 显示错误，不崩溃；旧页面保持可用。
+- [x] 后端 23 个测试通过。
+- [x] 前端 6 个坐标测试通过。
+- [x] `ruff check backend scripts` 通过。
+- [x] `npm run build` 通过。
+- [ ] 真实点击“打开 PDF”按钮后的系统文件对话框人工确认（自动化环境限制）。
 
 ### MVP 验收（Phase 1–3）
 
 电脑端：
 
-- [ ] 能选择一个普通文本 PDF 并显示原始页面。
-- [ ] 单词位置与原文对齐，缩放后仍对齐。
-- [ ] 点击任意英文单词能听到发音。
-- [ ] 点击例句能听到整句发音。
-- [ ] 没有英文语音时给出提示。
-- [ ] 扫描页能被识别为“无文本层”，有明确提示。
+- [x] 能选择一个普通文本 PDF 并显示原始页面。
+- [x] 单词位置与原文对齐，缩放、滚动、旋转后仍对齐。
+- [x] 点击英文单词能显示准确结果并播放模拟提示音。
+- [x] 点击例句（句子内空白处）能显示整句并播放模拟提示音。
+- [x] 模拟音频不可用时仍有视觉反馈。
+- [x] 扫描页能被识别为“无文本层”，有明确提示。
 
 手机端：
 
@@ -381,12 +433,13 @@ python scripts/check_env.py
 
 隐私与工程：
 
-- [ ] 默认监听 `127.0.0.1`；手机测试仅通过可信局域网。
-- [ ] `data/`、`.venv/`、`node_modules/`、`.env` 未进入 Git。
-- [ ] `python -m pytest` 全部通过。
-- [ ] `ruff check backend` 通过。
-- [ ] `npm run build` 通过。
-- [ ] 按 README 在全新环境可以完成安装和启动。
+- [x] 默认监听 `127.0.0.1`；手机测试仅通过可信局域网。
+- [x] `data/`、`.venv/`、`node_modules/`、`.env` 未进入 Git。
+- [x] `python -m pytest` 全部通过。
+- [x] `ruff check backend scripts` 通过。
+- [x] `npm run build` 通过。
+- [x] `npm test` 通过。
+- [x] README 提供完整的安装、启动和测试步骤。
 
 性能目标（普通笔记本，CPU）：
 
@@ -406,11 +459,15 @@ python scripts/check_env.py
 
 ## 12. 已知风险与限制
 
-- **PDF 旋转**：PyMuPDF 文本坐标是未旋转坐标，PDF.js 默认旋转渲染；必须按第 6 节转换，旋转页要单独测试。
-- **扫描版 PDF**：没有文本层，MVP 不处理；后续可把页面渲染成图片后复用照片 OCR。
+- **PDF 旋转**：PyMuPDF 文本坐标是未旋转坐标，PDF.js 默认旋转渲染；当前已按第 6 节转换，并用 90° 页面验证；其他旋转角度有单元测试但还没有真实书籍样本。
+- **句子点击 UX**：点击单词播放单词，点击句子内**单词之间的空白**才播放整句；后续应增加更明显的整句按钮。
+- **模拟音频**：Phase 1 只有提示音，不能用来判断发音是否正确；真人音频留到 Phase 4。
+- **扫描版 PDF**：没有文本层，当前只提示、不 OCR；后续可把页面渲染成图片后复用照片 OCR。
+- **OCR 依赖尚未安装**：RapidOCR/ONNX Runtime 未进入 `.venv`，Phase 3 前需执行 `pip install -r requirements-ocr.txt`。
 - **OCR 词框**：RapidOCR 的词级结果可能是字符级框，需要按空格和标点合并成英文单词；必须用真实书页照片验证。
 - **OCR 准确率**：低清晰度、倾斜、反光、手写批注都会降低效果；MVP 先接受并展示识别结果，不做自动纠错。
-- **浏览器语音**：不同系统/浏览器的英文音色不同，部分环境没有英文语音；这是 MVP 的已知限制。
+- **PDF 兼容性**：损坏、下载不完整或异常结构的 PDF 可能被 PDF.js 拒绝；当前会显示错误。PyMuPDF 和 PDF.js 对异常文件的宽容度不同。
+- **原生文件选择框**：自动化环境无法操作系统文件对话框；已通过文件输入 `change` 事件和拖放路径验证同一处理逻辑，仍需人工点击一次确认。
 - **移动端网络**：手机访问依赖同一 Wi-Fi 和防火墙放行；Vite 开发服务器不适合长期公开运行。
 - **PyMuPDF 许可证**：AGPL-3.0 或商业许可；分发前必须复核。
 - **大文件**：大 PDF 和高分辨率照片要限制大小，按页/按需处理，避免一次读入全部内容。
@@ -420,14 +477,15 @@ python scripts/check_env.py
 | 阶段 | 内容 | 状态 |
 | --- | --- | --- |
 | Phase 0 | 环境、规则、目录、README、健康检查 | 已完成 |
-| Phase 1 | PDF 上传 + PyMuPDF 单页文字/坐标 + PDF.js 渲染 + 单词点击 + TTS | 待开始 |
-| Phase 2 | 例句切分与整句播放、翻页、缩放、错误提示 | 待开始 |
+| Phase 1 | PDF 上传 + PyMuPDF 单页文字/坐标 + PDF.js 渲染 + 单词点击 + 模拟反馈 + 翻页/缩放/滚动 | 已完成 |
+| Phase 2 | 例句切分与整句播放、阅读体验打磨（整句按钮、更多排版验证） | 基础版完成，待打磨 |
 | Phase 3 | 手机拍照/选图 + RapidOCR + 照片点击层 | 待开始 |
 | Phase 4 | 合法音频来源 + 音频缓存 + 朗读回退策略 | 后续 |
 | Phase 5 | EPUB、收藏、学习记录（SQLite） | 后续 |
 
-**下一阶段只做 Phase 1，不要提前实现 Phase 2–5。**
+**下一阶段按用户指令选择 Phase 2 打磨或 Phase 3 照片 OCR；不要提前实现 Phase 4–5。**
 
 ## 14. 变更记录
 
 - **2026-10-20**：完成阶段 0；确定 Python 3.12 + FastAPI + PyMuPDF + RapidOCR + Vite/PDF.js 技术栈；创建项目骨架。
+- **2026-10-20**：完成 Phase 1；实现 PDF 上传、逐页单词/句子/坐标提取、PDF.js 原版渲染、透明点击层、翻页/缩放/滚动、模拟反馈、错误处理；后端 23 个测试、前端 6 个测试和真实 PDF 浏览器验收通过。

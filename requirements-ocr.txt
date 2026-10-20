@@ -1,0 +1,7 @@
+# 照片 OCR 依赖（Phase 3 使用，Phase 1 不需要）
+# 额外安装：pip install -r requirements-ocr.txt
+-r requirements.txt
+
+rapidocr==3.10.0
+onnxruntime==1.31.0
+pillow==11.3.0

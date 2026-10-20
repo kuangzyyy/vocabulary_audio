@@ -1,0 +1,48 @@
+"""Response models for the book and page APIs."""
+
+from __future__ import annotations
+
+from pydantic import BaseModel, Field
+
+
+class BookInfo(BaseModel):
+    book_id: str
+    filename: str
+    page_count: int
+    title: str | None = None
+    size_bytes: int
+
+
+class WordItem(BaseModel):
+    id: str
+    text: str
+    bbox: list[float] = Field(min_length=4, max_length=4)
+    line_id: str
+    sentence_id: str | None = None
+
+
+class LineItem(BaseModel):
+    id: str
+    text: str
+    bbox: list[float] = Field(min_length=4, max_length=4)
+
+
+class SentenceItem(BaseModel):
+    id: str
+    text: str
+    bbox: list[float] = Field(min_length=4, max_length=4)
+
+
+class PageData(BaseModel):
+    book_id: str
+    page: int
+    page_count: int
+    width: float
+    height: float
+    rotation: int
+    has_text: bool
+    is_scanned: bool
+    message: str | None = None
+    words: list[WordItem]
+    lines: list[LineItem]
+    sentences: list[SentenceItem]

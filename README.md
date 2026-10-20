@@ -1,318 +1,267 @@
 # Vocabulary Audio
 
-一个**本地优先**的英语点读工具：在电脑上打开 PDF，直接点击原始页面里的英文单词或例句就能听发音；在手机上拍下纸质书页面，也能点击照片里的单词和句子听发音。
+一个**本地优先**的英语点读工具：在电脑上打开 PDF，直接点击原始页面里的英文单词就能听到反馈；在手机上拍下纸质书页面后，也能点击照片里的单词或句子（照片 OCR 在 Phase 3 实现）。
 
-> **当前状态：阶段 0（项目骨架）**
+> **当前状态：Phase 1 已完成（2026-10-20）**
 >
-> 现在已经完成环境检查、项目规则、目录结构、依赖清单和一个最小的健康检查接口。
-> **PDF 点读、照片 OCR、发音功能还没有实现**，前端目前只是占位页。
-> 下一阶段从“普通文本 PDF 的单词点击发音”开始。
+> 已实现：打开 PDF、PDF.js 原版页面渲染、PyMuPDF 单词/句子坐标提取、
+> 透明点击层、点击单词显示识别结果、模拟发音反馈、翻页、缩放、滚动、
+> 扫描页提示和错误处理。
+>
+> 尚未实现：真人发音、照片 OCR、EPUB、收藏和学习记录。
 
-## 这个项目要解决什么问题
+## 现在能做什么
 
-传统 PDF 阅读器只能选中文字或复制，不能像点读笔一样“点到哪里读哪里”。这个项目希望做到：
+- 用“打开 PDF”按钮、拖放或文件选择打开普通文本 PDF。
+- PDF.js 按原始排版显示页面，不会用重排的纯文本替代原书。
+- 点击页面上的英文单词，底部会显示准确识别出的单词，并播放一声本地模拟提示音。
+- 点击句子内部的空白处（单词之间的空隙），会显示整句并模拟播放整句。
+- 支持上一页/下一页、页码输入、放大/缩小、“适合宽度”和页面滚动。
+- 缩放或滚动后，透明点击区域仍然跟随原页面文字。
+- 打开扫描版页面时明确提示“暂不支持 OCR”，不会假装识别成功。
+- 文件为空、不是 PDF、加密 PDF、页码越界、页面提取失败都有中文错误提示。
+- 所有 PDF 只保存在本机，不上传云端。
 
-- **保留原始排版**：PDF 用 PDF.js 原样显示，不重新排版。
-- **点击原文**：英文单词和例句都是点击热区，不需要先复制到别的软件。
-- **手机也能用**：拍纸质书页面，OCR 后在照片上直接点读。
-- **隐私优先**：书籍、照片、识别文本默认只在本机处理，不上传云端。
-- **先能用，再变好**：先做最小可用版本，不一次性堆满功能。
+## 暂不实现
 
-## MVP 范围
-
-第一版只做：
-
-1. 电脑端打开普通文本 PDF，点击单词发音。
-2. 点击例句播放整句。
-3. 手机拍照/导入照片，OCR 后点击单词或句子发音。
-4. 使用浏览器自带语音（SpeechSynthesis）发声，不依赖云端。
-
-暂不实现：
-
-- EPUB。
-- 单词收藏、生词本、学习记录。
-- 用户账号、云同步、分享。
+- 真人单词/句子音频（当前只有模拟提示音）。
+- 手机照片 OCR（RapidOCR 依赖已拆分到后续阶段）。
+- EPUB、单词收藏、生词本、学习记录。
+- 用户账号、云同步、分享、公开部署。
 - 扫描版 PDF 的 OCR。
-- 词典释义、翻译、多语言 OCR。
 
 ## 技术栈
 
 | 部分 | 选择 | 作用 |
 | --- | --- | --- |
 | 后端 | Python 3.12 + FastAPI + Uvicorn | 本地 API 服务 |
-| PDF 解析 | PyMuPDF | 提取每页的单词、行、句子和坐标 |
-| PDF 显示 | PDF.js (`pdfjs-dist`) | 在浏览器中保留原始排版 |
-| 照片 OCR | RapidOCR + ONNX Runtime（CPU） | 返回文字和位置坐标，本地运行 |
-| 前端 | Vite 8 + 原生 JavaScript | 无需先学 React/Vue，调试直观 |
-| 音频（MVP） | 浏览器 SpeechSynthesis | 合法、离线可用、无需下载 |
-| 数据 | 本地文件；后续用 SQLite | 书籍、照片、音频缓存和记录 |
+| PDF 解析 | PyMuPDF 1.26.5 | 提取单词、行、句子和坐标 |
+| PDF 显示 | PDF.js 6.4.299 | 保留原始排版渲染 |
+| 前端 | Vite 8 + 原生 JavaScript | 无需先学 React/Vue |
+| 音频（Phase 1） | Web Audio 模拟提示音 | 不依赖网络；真人音频后续接入 |
+| 照片 OCR（Phase 3） | RapidOCR + ONNX Runtime | 本地运行、返回文字坐标 |
+| 测试 | pytest + Node 内置 test runner | 后端 API/坐标测试、前端坐标测试 |
 
-更详细的选型理由、替代方案和规则见 [AGENTS.md](AGENTS.md)。
+更详细的选型理由、坐标契约和开发规则见 [AGENTS.md](AGENTS.md)。
 
-## 当前电脑环境检查结果
+## 当前环境状态
 
-检查日期：**2026-10-20**。完整报告见 [docs/environment.md](docs/environment.md)。
+检查日期：**2026-10-20**。详细记录见 [docs/environment.md](docs/environment.md)。
 
-| 项目 | 当前状态 | 结论 |
-| --- | --- | --- |
-| Python | 3.9.6 | **不满足**，需要安装 Python 3.12 |
-| Node.js | 24.18.0 | 满足要求 |
-| npm | 11.16.0 | 满足要求，npm 源可访问 |
-| Git | 2.55.0 | 满足要求，已配置用户名/邮箱 |
-| PyMuPDF | 全局已安装 1.26.5 | 项目仍会使用隔离的 `.venv`，不要依赖全局包 |
-| FastAPI / Uvicorn | 未安装 | 安装 Python 3.12 后在虚拟环境中安装 |
-| RapidOCR / ONNX Runtime | 未安装 | 随后端依赖一起安装 |
-| Tesseract | 未安装 | **本方案不需要** |
-| Docker | 未安装 | **本方案不需要** |
+| 项目 | 状态 |
+| --- | --- |
+| Python | **3.12.10 已安装**，项目 `.venv` 已创建 |
+| Node.js | 24.18.0，满足要求 |
+| npm | 11.16.0，满足要求 |
+| Git | 2.55.0，满足要求 |
+| FastAPI / Uvicorn / PyMuPDF | 已安装到 `.venv` |
+| Pillow / pytest / httpx / Ruff | 已安装到 `.venv`（开发与测试用） |
+| PDF.js / Vite | 已安装到 `frontend/node_modules` |
+| RapidOCR / ONNX Runtime | **未安装**；Phase 3 需要时执行 `pip install -r requirements-ocr.txt` |
+| Tesseract / Docker | 不需要 |
 
-随时可以重新检查：
+一键复查：
 
 ```powershell
-python scripts/check_env.py
+.\.venv\Scripts\python.exe scripts\check_env.py
 ```
-
-> 为什么必须用 Python 3.12？
-> 当前最新版 FastAPI、PyMuPDF 2.x 和 ONNX Runtime 都要求 Python 3.10 或更高；Python 3.9 已经停止维护。RapidOCR 官方文档以 Python 3.12 验证最充分，所以选择 3.12，而不是更激进的 3.13。
 
 ## 快速开始（Windows / PowerShell）
 
-### 0. 准备工具
+### 1. 激活虚拟环境
 
-需要：
-
-- Windows 10 或 Windows 11。
-- Python **3.12.x**。
-- Node.js **22.13 或更高**（本机已是 24.18.0，满足）。
-- Git（本机已有）。
-
-### 1. 安装 Python 3.12
-
-如果 `py -0p` 里还没有 3.12，任选一种方式：
-
-**方式 A：winget（推荐，命令简单）**
+在项目根目录执行：
 
 ```powershell
-winget install -e --id Python.Python.3.12
-```
-
-**方式 B：官网安装包**
-
-1. 打开 <https://www.python.org/downloads/windows/>。
-2. 下载 Python 3.12 的 Windows installer (64-bit)。
-3. 安装时勾选 **Add python.exe to PATH**。
-4. 安装完成后关闭并重新打开终端。
-
-验证：
-
-```powershell
-py -0p
-py -3.12 --version
-```
-
-应看到 Python 3.12.x。
-
-### 2. 安装后端依赖
-
-在项目根目录（`D:\app_github\vocabulary_audio`）执行：
-
-```powershell
-py -3.12 -m venv .venv
 .\.venv\Scripts\Activate.ps1
-
-python -m pip install --upgrade pip
-pip install -r requirements-dev.txt
 ```
 
-如果 PowerShell 提示“禁止运行脚本”，只需对当前用户放行一次：
+如果 PowerShell 禁止运行脚本，只需对当前用户放行一次：
 
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 ```
 
-然后重新执行激活命令。
+Git Bash 使用：
 
-> 使用 Git Bash 时，激活命令是：
-> `source .venv/Scripts/activate`
+```bash
+source .venv/Scripts/activate
+```
 
-验证依赖：
+### 2. 安装依赖（新环境才需要）
 
 ```powershell
-python -c "import fastapi, pymupdf, rapidocr, onnxruntime; print('backend deps OK')"
+python -m pip install --upgrade pip
+pip install -r requirements-dev.txt
+
+cd frontend
+npm install
+cd ..
 ```
+
+> Phase 1 不需要 OCR。等实现照片点读时再执行
+> `pip install -r requirements-ocr.txt`。
 
 ### 3. 启动后端
 
-在**已激活虚拟环境**的项目根目录执行：
+在项目根目录、已激活虚拟环境的终端中：
 
 ```powershell
 uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-打开 <http://127.0.0.1:8000/api/health>，应看到类似：
+健康检查：<http://127.0.0.1:8000/api/health>
+接口文档：<http://127.0.0.1:8000/docs>
 
-```json
-{ "status": "ok", "service": "vocabulary-audio", "version": "0.1.0" }
-```
+### 4. 启动前端
 
-FastAPI 自动生成的接口文档：<http://127.0.0.1:8000/docs>。
-
-### 4. 安装并启动前端
-
-**另开一个终端**：
+另开一个终端：
 
 ```powershell
 cd frontend
-npm install
 npm run dev
 ```
 
-打开 <http://127.0.0.1:5173>，应该能看到阶段 0 的占位页。
+打开 <http://127.0.0.1:5173>。
 
-前端开发服务器会把 `/api` 请求代理到 `http://127.0.0.1:8000`，所以不需要手动配置跨域地址。
+前端开发服务器会把 `/api` 请求代理到本机的 `http://127.0.0.1:8000`。
 
-### 5. 构建前端（可选，用于检查生产构建是否正常）
+### 5. 使用
 
-```powershell
-cd frontend
-npm run build
-```
+1. 点击“打开 PDF”或把 PDF 拖入页面。
+2. 点击页面中的英文单词，底部“当前识别”会显示单词，并播放模拟提示音。
+3. 点击句子中单词之间的空白处，会显示并模拟播放整句。
+4. 用工具栏翻页、输入页码（按 Enter 跳转）、放大/缩小或“适合宽度”。
+5. 页面较长时在阅读区内滚动；点击区域会和原页面一起移动。
 
-产物在 `frontend/dist/`，已被 `.gitignore` 忽略。
+### 6. 手机访问（PDF 当前也可用）
 
-### 6. 手机访问（后续功能实现后使用）
-
-手机和电脑连接**同一个 Wi-Fi**：
+手机和电脑连接同一个 Wi-Fi：
 
 1. Vite 已配置 `host: true`，启动时会显示 `Network:` 地址。
 2. 在手机浏览器打开 `http://<电脑局域网IP>:5173`。
-3. 手机上的 `/api` 请求会由 Vite 代理到电脑本机的 8000 端口。
-4. Windows 防火墙首次询问时，只允许**专用网络**。
+3. `/api` 请求由 Vite 代理到电脑本机后端，后端不需要直接暴露。
+4. Windows 防火墙首次询问时只允许“专用网络”。
 
-注意：
+注意：当前没有登录鉴权，**只能在可信局域网使用**，不要做端口转发。
 
-- 当前没有登录和权限控制，**只能在可信局域网使用**。
-- 不要做路由器端口转发，不要把服务暴露到公网。
-- 如果手机打不开，先检查两台设备是否在同一 Wi-Fi、防火墙是否放行 Node.js、电脑 IP 是否变化。
-
-## 目录说明
-
-```text
-vocabulary_audio/
-├── AGENTS.md              # 项目目标、技术选型、开发规则、验收标准
-├── README.md              # 当前文件
-├── requirements.txt       # 后端运行依赖
-├── requirements-dev.txt   # 测试和代码检查依赖
-├── pyproject.toml         # pytest / ruff 配置
-├── backend/
-│   ├── app/
-│   │   ├── main.py        # FastAPI 入口（当前只有 /api/health）
-│   │   ├── api/           # 路由（后续：books、photos、audio）
-│   │   ├── services/      # PDF、OCR、音频逻辑（后续）
-│   │   └── models/        # 请求/响应数据结构（后续）
-│   └── tests/             # 后端测试
-├── frontend/
-│   ├── index.html         # 页面入口
-│   ├── package.json       # 前端依赖和命令
-│   ├── vite.config.js     # 开发服务器 + /api 代理
-│   └── src/               # 前端源码（当前为占位页）
-├── data/                  # 私人数据，全部被 Git 忽略
-│   ├── books/             # 用户 PDF
-│   ├── photos/            # 用户照片
-│   └── audio_cache/       # 后续的合法音频缓存
-├── docs/
-│   └── environment.md     # 环境检查报告
-└── scripts/
-    └── check_env.py       # 环境检查脚本
-```
-
-## 隐私与数据
-
-- 默认只监听 `127.0.0.1`，书籍和照片不上传云端。
-- `data/` 下的 PDF、照片、音频缓存和数据库都被 `.gitignore` 忽略。
-- `.env`、密钥、证书不会提交。
-- 日志只记录 ID 和错误信息，不记录书籍内容或识别文本。
-- 请只处理你有权使用的书籍和照片；不要把他人的受版权保护内容提交到仓库。
-
-## 关于发音
-
-MVP 使用浏览器内置的 SpeechSynthesis：
-
-- 优点：合法、零成本、无网络请求、无需准备音频文件。
-- 局限：不同系统的英文音色不同；部分环境可能没有英文语音；语速和自然度不如真人录音。
-
-后续接入真人音频时，会：
-
-- 只使用许可证明确的来源（例如 Wikimedia Commons / Wiktionary 的音频）。
-- 缓存已获取的音频，并保存来源、许可证、署名和获取时间。
-- 找不到合适音频时回退到浏览器 TTS。
-- 不使用未授权的抓取接口或非官方 TTS 服务。
-
-## 常见问题
-
-**`py -3.12` 找不到？**
-说明 Python 3.12 还没安装，或安装时没有注册 launcher。重新安装并勾选 PATH，或使用 Python 3.12 安装目录下的 `python.exe` 创建虚拟环境。
-
-**`Activate.ps1` 无法运行？**
-执行 `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned`，然后重新激活。
-
-**`npm install` 很慢？**
-先确认网络正常。必要时可以临时换源（不要把换源配置写进项目文件）：
+## 测试
 
 ```powershell
-npm install --registry=https://registry.npmmirror.com
-```
-
-**端口被占用？**
-后端换 `--port 8001`，同时修改 `frontend/vite.config.js` 里的代理目标；前端换 `npm run dev -- --port 5174`。
-
-**需要安装 Tesseract 吗？**
-不需要。照片 OCR 使用 RapidOCR，安装 Python 包即可，模型随包提供。
-
-**为什么不用 React？**
-MVP 是单页阅读界面，原生 JavaScript + Vite 足够；少一层框架概念，坐标问题和事件问题更容易调试。以后功能复杂了再评估。
-
-**为什么 PDF 不用 PDF.js 自己提取文字？**
-PDF.js 负责“原样显示”；PyMuPDF 负责稳定地提取单词、行、句子和坐标。分工清晰，坐标也更容易测试。
-
-**PyMuPDF 的许可证是什么？**
-PyMuPDF 采用 AGPL-3.0 或商业许可。个人本地使用通常没有问题；如果将来要分发或公开托管，请先复核许可证要求。
-
-## 开发命令
-
-```powershell
-# 后端测试
+# 后端：坐标、PDF 提取、API、错误处理
 python -m pytest
 
 # Python 代码检查
-ruff check backend
+ruff check backend scripts
 
-# 前端开发
-cd frontend
-npm run dev
+# 前端坐标映射测试
+npm --prefix frontend test
 
 # 前端生产构建
-npm run build
-
-# 环境检查
-python scripts/check_env.py
+npm --prefix frontend run build
 ```
+
+当前结果：
+
+- 后端：**23 passed**。
+- 前端坐标测试：**6 passed**。
+- 前端生产构建：成功。
+- Ruff：通过。
+- 浏览器端到端验证：真实 15 页论文和 4 页测试 PDF 均验证通过。
+
+详细的浏览器验收记录和未解决问题见 [docs/phase1-acceptance.md](docs/phase1-acceptance.md)。
+
+## 目录结构
+
+```text
+vocabulary_audio/
+├── AGENTS.md                     # 协作规则、技术选型、坐标契约、验收标准
+├── README.md
+├── requirements.txt              # Phase 1 后端依赖
+├── requirements-dev.txt          # 测试/检查依赖
+├── requirements-ocr.txt          # Phase 3 OCR 依赖（当前不需要安装）
+├── pyproject.toml                # pytest / ruff 配置
+├── backend/
+│   ├── app/
+│   │   ├── main.py               # FastAPI 入口、错误映射
+│   │   ├── config.py             # 数据目录和上传限制
+│   │   ├── api/
+│   │   │   ├── health.py         # GET /api/health
+│   │   │   └── books.py          # 上传、文件、页面数据接口
+│   │   ├── services/
+│   │   │   ├── books.py          # 本地存储、上传校验、页面编排
+│   │   │   ├── pdf_extractor.py  # PyMuPDF 单词/句子/坐标提取
+│   │   │   └── errors.py         # 用户可见错误
+│   │   └── models/schemas.py     # API 响应模型
+│   └── tests/                    # 23 个后端测试
+├── frontend/
+│   ├── index.html                # 阅读界面
+│   ├── package.json
+│   ├── vite.config.js            # 端口和 /api 代理
+│   ├── src/
+│   │   ├── main.js               # 文件选择、结果栏、工具栏
+│   │   ├── api/client.js         # 后端请求
+│   │   ├── pdf/viewer.js         # PDF.js 渲染和透明点击层
+│   │   ├── pdf/coordinates.js    # 归一化坐标 -> 百分比的纯函数
+│   │   ├── audio/simulatedAudio.js
+│   │   └── styles/main.css
+│   └── tests/coordinates.test.js # Node 内置测试
+├── data/                         # 私人数据，全部被 Git 忽略
+│   ├── books/
+│   ├── photos/
+│   └── audio_cache/
+├── docs/
+│   ├── environment.md
+│   └── phase1-acceptance.md
+└── scripts/check_env.py
+```
+
+## 坐标是怎么对齐的
+
+1. PyMuPDF 返回的是**未旋转页面坐标**。
+2. 后端用 `page.rotation_matrix` 转成实际显示方向，再除以页面宽高，得到 `0..1` 的归一化坐标。
+3. 前端把每个框的 `x0/y0/x1/y1` 转成相对页面容器的百分比。
+4. 页面 canvas、句子层和单词层在同一个定位容器中，一起缩放和滚动。
+5. 因此翻页、缩放、滚动都不需要写死屏幕坐标。
+
+后端有旋转 0/90/180/270 的坐标测试；前端有“页面尺寸变化后框仍按比例缩放”的测试；浏览器验证还对比了每个框在 canvas 中的相对位置与后端 bbox。
+
+## 隐私与数据
+
+- 默认只监听 `127.0.0.1`，书籍、照片和识别文本不上传云端。
+- PDF 保存在 `data/books/`，照片将来保存在 `data/photos/`，都已被 `.gitignore` 忽略。
+- 日志只记录 ID、页码和错误信息，不记录书籍正文。
+- 请只处理你有权使用的书籍和照片；不要把受版权保护的文件提交到仓库。
+- PyMuPDF 采用 AGPL-3.0 或商业许可；个人本地使用没问题，将来分发或公开托管前需要复核。
+
+## 已知限制
+
+- 句子播放目前需要点击句子内**单词之间的空白处**；直接点单词会播放单词。
+- 只有模拟提示音，没有真人发音。
+- 扫描版 PDF 会明确提示，但暂不支持 OCR。
+- RapidOCR/ONNX Runtime 尚未安装，照片功能留到 Phase 3。
+- PDF 文本提取和句子切分是启发式规则；复杂多栏、表格、跨行句子的效果还需要更多真实书籍验证。
+- 损坏或下载不完整的 PDF 会被拒绝；PDF.js 与 PyMuPDF 对异常文件的宽容度可能不同。
+- 浏览器自动化无法操作系统原生文件选择框；本次端到端测试通过文件输入的 `change` 事件和拖放路径验证，真实点击按钮选文件需要人工再确认一次。
+- 当前没有鉴权，不能公开部署。
 
 ## 路线图
 
 | 阶段 | 内容 | 状态 |
 | --- | --- | --- |
 | Phase 0 | 环境、规则、目录、README、健康检查 | 已完成 |
-| Phase 1 | PDF 上传 + 文本/坐标提取 + PDF.js 渲染 + 单词点击发音 | 待开始 |
-| Phase 2 | 例句切分、整句播放、翻页与缩放 | 待开始 |
-| Phase 3 | 手机拍照/选图 + OCR + 照片点击层 | 待开始 |
+| Phase 1 | PDF 上传 + 文本/坐标 + PDF.js 渲染 + 单词点击 + 模拟播放 + 翻页缩放滚动 | 已完成 |
+| Phase 2 | 例句切分/整句播放、阅读体验打磨 | 基础版已包含，继续打磨 |
+| Phase 3 | 手机拍照/选图 + RapidOCR + 照片点击层 | 待开始 |
 | Phase 4 | 合法音频来源与缓存 | 后续 |
-| Phase 5 | EPUB、收藏、学习记录 | 后续 |
+| Phase 5 | EPUB、收藏、学习记录（SQLite） | 后续 |
 
 ## 相关文档
 
-- [AGENTS.md](AGENTS.md)：完整的技术规则、坐标契约、隐私规则和验收标准。
-- [docs/environment.md](docs/environment.md)：本次环境检查的详细结果和待办。
+- [AGENTS.md](AGENTS.md)：技术规则、坐标契约、隐私规则、验收标准。
+- [docs/environment.md](docs/environment.md)：当前环境和依赖状态。
+- [docs/phase1-acceptance.md](docs/phase1-acceptance.md)：本次测试结果、浏览器验收和未解决问题。
 
 ## 许可证
 
-项目代码的许可证尚未确定。第三方依赖遵循各自许可证；仓库不包含任何书籍、照片或受版权保护的音频。
+项目代码的许可证尚未确定。第三方依赖遵循各自许可证；仓库不包含书籍、照片或受版权保护的音频。

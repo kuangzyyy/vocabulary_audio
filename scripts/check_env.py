@@ -30,10 +30,13 @@ required_python_packages = [
     ("fastapi", "FastAPI"),
     ("uvicorn", "Uvicorn"),
     ("pymupdf", "PyMuPDF"),
-    ("rapidocr", "RapidOCR"),
-    ("onnxruntime", "ONNX Runtime"),
     ("PIL", "Pillow"),
     ("multipart", "python-multipart"),
+]
+
+optional_ocr_packages = [
+    ("rapidocr", "RapidOCR"),
+    ("onnxruntime", "ONNX Runtime"),
 ]
 
 
@@ -119,7 +122,7 @@ def main():
         failures += 1
 
     print()
-    print("Backend Python packages (current interpreter)")
+    print("Required backend Python packages (current interpreter)")
     missing_packages = []
     for module_name, display_name in required_python_packages:
         found = importlib.util.find_spec(module_name) is not None
@@ -128,6 +131,12 @@ def main():
             missing_packages.append(display_name)
     if missing_packages:
         failures += 1
+
+    print()
+    print("Optional OCR packages (Phase 3, not required for PDF reading)")
+    for module_name, display_name in optional_ocr_packages:
+        found = importlib.util.find_spec(module_name) is not None
+        report(found, display_name, "installed" if found else "not installed")
 
     print()
     print("Frontend packages")
@@ -158,10 +167,18 @@ def main():
 
     print()
     print("Optional / not required by this stack")
-    tesseract_text, tesseract_error = run_version("tesseract")
-    report(tesseract_text is not None, "Tesseract OCR", tesseract_text or "not installed (not required)")
-    docker_text, docker_error = run_version("docker")
-    report(docker_text is not None, "Docker", docker_text or "not installed (not required)")
+    tesseract_text, _ = run_version("tesseract")
+    report(
+        tesseract_text is not None,
+        "Tesseract OCR",
+        tesseract_text or "not installed (not required)",
+    )
+    docker_text, _ = run_version("docker")
+    report(
+        docker_text is not None,
+        "Docker",
+        docker_text or "not installed (not required)",
+    )
 
     print()
     print("=" * 72)
