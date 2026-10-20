@@ -32,6 +32,8 @@ export class PdfViewer {
     this.autoFit = true;
     this.renderToken = 0;
     this.destroyed = false;
+    this.isShowing = false;
+    this.pendingResize = false;
     this.setClickMode('word');
   }
 
@@ -108,6 +110,8 @@ export class PdfViewer {
     this.currentPage = 0;
     this.currentPageData = null;
     this.pageCount = 0;
+    this.isShowing = false;
+    this.pendingResize = false;
     this.clearLayers();
     this.resetStage();
   }
@@ -137,6 +141,7 @@ export class PdfViewer {
     );
     const token = ++this.renderToken;
     this.currentPage = target;
+    this.isShowing = true;
     this.loading.textContent = `正在加载第 ${target} 页…`;
     this.loading.hidden = false;
     this.callbacks.onPageLoading?.(target, this.pageCount);
@@ -190,7 +195,14 @@ export class PdfViewer {
       this.callbacks.onPageError?.(toFriendlyError(error).message);
     } finally {
       if (token === this.renderToken) {
+        this.isShowing = false;
         this.callbacks.onLoadingChange?.(false);
+        if (this.pendingResize && this.autoFit && this.currentPage) {
+          this.pendingResize = false;
+          queueMicrotask(() => {
+            void this.showPage(this.currentPage, { resetScroll: false });
+          });
+        }
       }
     }
   }
@@ -223,6 +235,10 @@ export class PdfViewer {
 
   async handleResize() {
     if (!this.autoFit || !this.pdfDocument || !this.currentPage) {
+      return;
+    }
+    if (this.isShowing) {
+      this.pendingResize = true;
       return;
     }
     await this.showPage(this.currentPage, { resetScroll: false });
@@ -291,9 +307,30 @@ export class PdfViewer {
     });
     this.renderTask = task;
 
+    let timedOut = false;
+    let watchdog = 0;
     try {
-      await task.promise;
+      await Promise.race([
+        task.promise,
+        new Promise((_, reject) => {
+          watchdog = window.setTimeout(() => {
+            timedOut = true;
+            try {
+              task.cancel();
+            } catch {
+              // Ignore a task that finished while the watchdog fired.
+            }
+            reject(new Error('页面渲染超时，请重试。'));
+          }, 15000);
+        }),
+      ]);
+    } catch (error) {
+      if (timedOut && error?.name === 'RenderingCancelledException') {
+        throw new Error('页面渲染超时，请重试。');
+      }
+      throw error;
     } finally {
+      window.clearTimeout(watchdog);
       if (this.renderTask === task) {
         this.renderTask = null;
       }

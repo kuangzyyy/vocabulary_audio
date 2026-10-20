@@ -2,12 +2,13 @@
 
 一个**本地优先**的英语点读工具：在电脑上打开 PDF，点击原文单词听真人录音、切换整句模式听整句；手机可以拍摄或选择纸质书照片，本机 OCR 后在原照片上点读。
 
-> **当前状态：Phase 4 已完成（2026-10-20）**
+> **当前状态：Phase 5 已完成（整合、回归测试与边界检查，2026-10-20）**
 >
 > 已实现：PDF 原版页面点读、真人单词发音、点词/点句模式、本机整句 TTS、
-> **手机照片导入/拍照、本机 RapidOCR、照片单词/整句点击、缩放拖动**、缓存和错误处理。
+> 手机照片导入/拍照、本机 RapidOCR、照片单词/整句点击、缩放拖动、缓存和错误处理。
+> Phase 5 对 PDF、照片、音频、布局、异常文件、网络失败和日志隐私做了回归与修复。
 >
-> 尚未实现：真人整句录音、EPUB、收藏和学习记录。真实手机相机操作需人工验收。
+> 尚未实现：真人整句录音、EPUB、收藏和学习记录。真实手机相机、原生文件选择框和真实多点触控仍需人工验收。
 
 ## 现在能做什么
 
@@ -215,6 +216,40 @@ npm run dev
 
 注意：当前没有登录鉴权，**只能在可信局域网使用**，不要做端口转发。
 
+### 7. 停止服务
+
+在两个终端分别按 `Ctrl+C`：
+
+- 后端终端：停止 Uvicorn。
+- 前端终端：停止 Vite。
+
+停止服务不会删除 `data/` 中的书籍、照片或音频缓存。若终端已关闭但端口仍被占用：
+
+```powershell
+netstat -ano | findstr :8000
+netstat -ano | findstr :5173
+
+# 用上一步显示的 PID 结束残留进程（只结束你确认的本地开发进程）
+taskkill /PID <PID> /F
+```
+
+## 排错
+
+| 现象 | 检查 / 处理 |
+| --- | --- |
+| `py -3.12` 找不到 | 安装 Python 3.12，或用 `py -0p` 查看已注册版本 |
+| `Activate.ps1` 被拒绝 | `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned` |
+| 前端提示无法连接后端 | 确认 Uvicorn 在 `127.0.0.1:8000` 运行；访问 `/api/health` |
+| 端口被占用 | 后端换端口并修改 `vite.config.js` 代理目标；前端换端口 |
+| 照片 OCR 报依赖缺失 | `pip install -r requirements-ocr.txt`，确认在 `.venv` 中执行 |
+| 照片没有识别文字 | 尽量正对书页、光线均匀、提高清晰度；查看照片下方提示 |
+| 照片只显示提示但没有单词框 | OCR 没有返回单词级坐标，或页面不是英文；不会伪造单词框 |
+| 手机打不开前端 | 同一 Wi-Fi、使用手机访问电脑局域网 IP、防火墙只放行专用网络 |
+| 手机相机没有打开 | 真实手机浏览器才支持 `capture`；桌面浏览器会打开文件选择 |
+| 没有单词录音 | 该词没有合适 Wikimedia 录音；换词或检查网络/代理设置 |
+| 整句没有声音 | 确认 Windows 英文语音已安装；查看“合成语音不可用”提示 |
+| 修改依赖后行为异常 | 重新激活 `.venv`，运行 `python scripts/check_env.py`，重启前后端 |
+
 ## 测试
 
 ```powershell
@@ -233,13 +268,13 @@ npm --prefix frontend run build
 
 当前结果：
 
-- 后端：**67 passed**。
+- 后端：**71 passed**。
 - 前端：**12 passed**（6 个坐标测试 + 6 个音频 UI 测试）。
 - 前端生产构建：成功。
 - Ruff：通过。
 - 浏览器端到端：PDF 点读、真单词发音、整句 TTS、照片 OCR、点词/点句、缩放拖动和缓存均验证通过。
 
-详细记录见 [docs/phase4-acceptance.md](docs/phase4-acceptance.md)。
+详细记录见 [docs/phase5-test-report.md](docs/phase5-test-report.md)；各阶段历史验收见 [docs/phase4-acceptance.md](docs/phase4-acceptance.md) 等文件。
 
 ## 目录结构
 
@@ -270,7 +305,7 @@ vocabulary_audio/
 │   │   │   ├── wikimedia_http.py # curl/urllib 传输、限流和重试
 │   │   │   └── errors.py
 │   │   └── models/schemas.py
-│   └── tests/                    # 67 个后端测试
+│   └── tests/                    # 71 个后端测试
 ├── frontend/
 │   ├── index.html
 │   ├── package.json
@@ -357,7 +392,8 @@ vocabulary_audio/
 | Phase 2 | 合法真人单词录音、来源/许可、口音选择、本地缓存 | 已完成 |
 | Phase 3 | 整句点读：点词/点句模式、本机 TTS、合成语音标记、WAV 缓存 | 已完成 |
 | Phase 4 | 手机拍照/选图 + 本机 RapidOCR + 照片点击层 + 缩放拖动 | 已完成 |
-| Phase 5 | 真人整句音频评估、EPUB、收藏、学习记录 | 后续 |
+| Phase 5 | 整合、全面回归、边界/失败测试、日志脱敏、测试报告 | 已完成 |
+| Phase 6 | 真人整句音频评估、EPUB、收藏、学习记录 | 后续 |
 
 ## 相关文档
 
@@ -369,6 +405,7 @@ vocabulary_audio/
 - [docs/phase2-acceptance.md](docs/phase2-acceptance.md)：真人单词发音与缓存验收。
 - [docs/phase3-acceptance.md](docs/phase3-acceptance.md)：整句点读、点词/点句模式和 TTS 缓存验收。
 - [docs/phase4-acceptance.md](docs/phase4-acceptance.md)：手机照片导入、OCR、点读、缩放拖动验收。
+- [docs/phase5-test-report.md](docs/phase5-test-report.md)：Phase 5 整合回归、边界测试和已通过/未测试清单。
 
 ## 许可证
 

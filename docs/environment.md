@@ -3,7 +3,7 @@
 - 检查日期：2026-10-20
 - 工作目录：`D:\app_github\vocabulary_audio`
 - 系统：Windows（版本 10.0.26200，x64）
-- 当前阶段：Phase 4（PDF 点读 + 音频 + 手机照片点读）已完成
+- 当前阶段：Phase 5（整合、回归测试与边界检查）已完成
 
 ## 结论
 
@@ -17,7 +17,7 @@
 | 照片 OCR | RapidOCR 3.10.0 + ONNX Runtime 1.31.0，CPU 本地推理 |
 | 单词音频网络 | 系统 `curl` 可访问 Wikimedia Commons；urllib 兜底 |
 | 整句 TTS | Windows SAPI 可用：Microsoft Zira / David（en-US） |
-| 后端测试 | **67 passed** |
+| 后端测试 | **71 passed** |
 | 前端测试 | **12 passed**（6 坐标 + 6 音频 UI） |
 | 前端构建 | 成功 |
 | 浏览器验收 | PDF、单词/整句音频、照片 OCR、点读、缩放拖动、清空均通过（移动尺寸 390×844） |
@@ -83,13 +83,13 @@ RapidOCR 的检测/方向分类/识别模型随包提供在：
 
 详见 [photo-ocr.md](photo-ocr.md)。
 
-## 6. Phase 4 验证结果
+## 6. Phase 5 验证结果
 
 ### 自动化测试
 
 ```text
 python -m pytest
-67 passed
+71 passed
 
 ruff check backend scripts
 All checks passed

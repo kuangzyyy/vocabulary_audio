@@ -441,9 +441,12 @@ async function handlePhoto(file) {
       activeSource = 'photo';
       try {
         await photoViewer.load(previousPhoto);
+        dom.photoName.textContent = previousPhoto.filename;
+        dom.photoSize.textContent = `${previousPhoto.width} × ${previousPhoto.height}`;
         dom.photoViewer.hidden = false;
         dom.resultPanel.hidden = false;
         resetResult();
+        showPhotoMessage(previousPhoto);
       } catch {
         currentPhoto = null;
         photoViewer.clear();

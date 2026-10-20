@@ -9,6 +9,9 @@
 
 ## 1. 自动化测试
 
+> Phase 4 完成时为 67 个后端测试；Phase 5 新增 4 个日志脱敏测试后为 71 个。
+> 当前结果以 [phase5-test-report.md](phase5-test-report.md) 为准。
+
 ```text
 python -m pytest
 67 passed
