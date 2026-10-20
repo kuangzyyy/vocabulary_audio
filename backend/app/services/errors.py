@@ -35,3 +35,33 @@ class PageNotFoundError(PdfError):
 
 class PageExtractionError(PdfError):
     status_code = 422
+
+
+class AudioError(Exception):
+    """Base class for word-audio errors."""
+
+    status_code = 502
+
+
+class InvalidWordError(AudioError):
+    status_code = 400
+
+
+class AudioUnavailableError(AudioError):
+    status_code = 404
+
+
+class AudioUpstreamError(AudioError):
+    status_code = 502
+
+
+class AudioRateLimitedError(AudioError):
+    status_code = 503
+
+    def __init__(self, message: str, retry_after: float | None = None) -> None:
+        super().__init__(message)
+        self.retry_after = retry_after
+
+
+class AudioCacheError(AudioError):
+    status_code = 500

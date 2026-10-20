@@ -1,34 +1,50 @@
 # Vocabulary Audio
 
-一个**本地优先**的英语点读工具：在电脑上打开 PDF，直接点击原始页面里的英文单词就能听到反馈；在手机上拍下纸质书页面后，也能点击照片里的单词或句子（照片 OCR 在 Phase 3 实现）。
+一个**本地优先**的英语点读工具：在电脑上打开 PDF，直接点击原始页面里的英文单词，就能听到来自 Wikimedia Commons 的真人录音；后续会支持手机拍摄纸质书页面后点读。
 
-> **当前状态：Phase 1 已完成（2026-10-20）**
+> **当前状态：Phase 2 已完成（2026-10-20）**
 >
-> 已实现：打开 PDF、PDF.js 原版页面渲染、PyMuPDF 单词/句子坐标提取、
-> 透明点击层、点击单词显示识别结果、模拟发音反馈、翻页、缩放、滚动、
-> 扫描页提示和错误处理。
+> 已实现：PDF 原版页面渲染、单词/句子坐标提取、透明点击层、翻页/缩放/滚动、
+> **真实单词发音、美式/英式选择、来源与许可展示、本地音频缓存**、错误处理。
 >
-> 尚未实现：真人发音、照片 OCR、EPUB、收藏和学习记录。
+> 尚未实现：整句真实音频、手机照片 OCR、EPUB、收藏和学习记录。
 
 ## 现在能做什么
 
 - 用“打开 PDF”按钮、拖放或文件选择打开普通文本 PDF。
-- PDF.js 按原始排版显示页面，不会用重排的纯文本替代原书。
-- 点击页面上的英文单词，底部会显示准确识别出的单词，并播放一声本地模拟提示音。
-- 点击句子内部的空白处（单词之间的空隙），会显示整句并模拟播放整句。
-- 支持上一页/下一页、页码输入、放大/缩小、“适合宽度”和页面滚动。
-- 缩放或滚动后，透明点击区域仍然跟随原页面文字。
-- 打开扫描版页面时明确提示“暂不支持 OCR”，不会假装识别成功。
-- 文件为空、不是 PDF、加密 PDF、页码越界、页面提取失败都有中文错误提示。
-- 所有 PDF 只保存在本机，不上传云端。
+- PDF.js 按原始排版显示页面，不用重排文本替代原书。
+- 点击页面上的英文单词，底部显示准确识别结果并**播放真人录音**。
+- 如果该单词同时有美式/英式录音，页面会显示两个可点击的口音选项；只有一种时只显示该口音，不伪造另一种。
+- 录音来自 Wikimedia Commons，页面会显示发音来源、许可证和作者信息（如果有）。
+- 成功获取的音频保存在本机，后续点击优先使用缓存，不再重复下载。
+- 点击句子内部的空白处会显示整句；**整句真实音频尚未接入**。
+- 支持上一页/下一页、页码输入、放大/缩小、“适合宽度”和页面滚动；点击区域始终与原文对齐。
+- 扫描版页面明确提示“暂不支持 OCR”，不伪造识别结果。
+- 音频缺失、网络失败、播放失败都有明确提示；页面不会崩溃。
 
 ## 暂不实现
 
-- 真人单词/句子音频（当前只有模拟提示音）。
-- 手机照片 OCR（RapidOCR 依赖已拆分到后续阶段）。
+- 整句真人录音。
+- 浏览器 TTS 或其他机器合成语音；本项目不会把合成语音标成真人录音。
+- 手机照片 OCR（RapidOCR 依赖尚未安装）。
 - EPUB、单词收藏、生词本、学习记录。
 - 用户账号、云同步、分享、公开部署。
 - 扫描版 PDF 的 OCR。
+
+## 音频来源与许可
+
+**来源：Wikimedia Commons 官方 MediaWiki API。**
+
+- 只接受明确允许复用的许可证：Public domain、CC0、CC BY、CC BY-SA。
+- 拒绝 CC BY-NC、CC BY-ND、GFDL-only、许可证不明或内容含合成语音标记的文件。
+- 只使用已知为社区真人录制的文件命名系列：`En-us-*`、`En-uk-*`、`En-gb-*`、`LL-Q1860 (eng)-*`。
+- 美式/英式标签来自文件名；无法确定口音时显示“口音未标注”，不会假装成美式或英式。
+- 每个缓存文件旁保存来源页面、原始文件地址、许可证、作者、获取时间等元数据。
+- 页面会显示来源链接和许可证，满足署名要求。
+
+**隐私边界：** 点击一个**尚未缓存**的单词时，只有该单词文本会发送到 Wikimedia Commons API；不会发送 PDF、整页文字、照片、书籍内容或用户身份。已缓存的单词完全在本机播放。若需要完全离线，需要预先准备合法音频包，这不在当前阶段内。
+
+更详细的来源评估、API 访问方式、限流策略和替代方案见 [docs/audio-source.md](docs/audio-source.md)。
 
 ## 技术栈
 
@@ -38,11 +54,17 @@
 | PDF 解析 | PyMuPDF 1.26.5 | 提取单词、行、句子和坐标 |
 | PDF 显示 | PDF.js 6.4.299 | 保留原始排版渲染 |
 | 前端 | Vite 8 + 原生 JavaScript | 无需先学 React/Vue |
-| 音频（Phase 1） | Web Audio 模拟提示音 | 不依赖网络；真人音频后续接入 |
+| 音频来源 | Wikimedia Commons 官方 API | 逐文件许可、作者和录音地址 |
+| 音频播放 | HTMLAudioElement | 播放 MP3/OGG；浏览器原生播放 |
+| 音频缓存 | 本地文件 + JSON 元数据 | 避免重复下载，保留来源和许可 |
 | 照片 OCR（Phase 3） | RapidOCR + ONNX Runtime | 本地运行、返回文字坐标 |
-| 测试 | pytest + Node 内置 test runner | 后端 API/坐标测试、前端坐标测试 |
+| 测试 | pytest + Node 内置 test runner | 后端 API/缓存/坐标测试、前端 UI 单元测试 |
 
-更详细的选型理由、坐标契约和开发规则见 [AGENTS.md](AGENTS.md)。
+后端使用标准库 `urllib` 作为兜底传输，并优先使用系统 `curl` 直接访问 Wikimedia。Windows 10/11 自带 `curl.exe`。如果网络必须走系统代理，可以设置：
+
+```powershell
+$env:VOCABULARY_AUDIO_USE_PROXY = "1"
+```
 
 ## 当前环境状态
 
@@ -51,14 +73,16 @@
 | 项目 | 状态 |
 | --- | --- |
 | Python | **3.12.10 已安装**，项目 `.venv` 已创建 |
-| Node.js | 24.18.0，满足要求 |
-| npm | 11.16.0，满足要求 |
+| Node.js / npm | 24.18.0 / 11.16.0，满足要求 |
 | Git | 2.55.0，满足要求 |
 | FastAPI / Uvicorn / PyMuPDF | 已安装到 `.venv` |
 | Pillow / pytest / httpx / Ruff | 已安装到 `.venv`（开发与测试用） |
 | PDF.js / Vite | 已安装到 `frontend/node_modules` |
+| 系统 curl | Windows 自带，可访问 Wikimedia |
 | RapidOCR / ONNX Runtime | **未安装**；Phase 3 需要时执行 `pip install -r requirements-ocr.txt` |
 | Tesseract / Docker | 不需要 |
+
+后端音频功能不需要额外的 Python 包或 API Key。
 
 一键复查：
 
@@ -70,13 +94,11 @@
 
 ### 1. 激活虚拟环境
 
-在项目根目录执行：
-
 ```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
-如果 PowerShell 禁止运行脚本，只需对当前用户放行一次：
+如果 PowerShell 禁止运行脚本：
 
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
@@ -99,12 +121,10 @@ npm install
 cd ..
 ```
 
-> Phase 1 不需要 OCR。等实现照片点读时再执行
+> Phase 1/2 不需要 OCR。实现照片点读时再执行
 > `pip install -r requirements-ocr.txt`。
 
 ### 3. 启动后端
-
-在项目根目录、已激活虚拟环境的终端中：
 
 ```powershell
 uvicorn backend.app.main:app --reload --host 127.0.0.1 --port 8000
@@ -124,23 +144,28 @@ npm run dev
 
 打开 <http://127.0.0.1:5173>。
 
-前端开发服务器会把 `/api` 请求代理到本机的 `http://127.0.0.1:8000`。
+前端开发服务器会把 `/api` 请求代理到本机 `http://127.0.0.1:8000`。
 
 ### 5. 使用
 
 1. 点击“打开 PDF”或把 PDF 拖入页面。
-2. 点击页面中的英文单词，底部“当前识别”会显示单词，并播放模拟提示音。
-3. 点击句子中单词之间的空白处，会显示并模拟播放整句。
-4. 用工具栏翻页、输入页码（按 Enter 跳转）、放大/缩小或“适合宽度”。
-5. 页面较长时在阅读区内滚动；点击区域会和原页面一起移动。
+2. 点击英文单词：
+   - 显示识别结果；
+   - 自动加载并播放真人录音；
+   - 有美式/英式两种录音时，可以点击“美式”“英式”切换；
+   - 只有一种录音时显示该口音，不会出现伪造的第二个选项；
+   - 没有录音时显示“没有找到可合法使用真人录音”，不会用合成语音冒充。
+3. 点击句子内单词之间的空白处，会显示整句；整句音频暂未接入。
+4. 用工具栏翻页、输入页码（Enter 跳转）、缩放或“适合宽度”。
+5. 页面较长时在阅读区内滚动；点击区域与页面一起移动。
 
-### 6. 手机访问（PDF 当前也可用）
+### 6. 手机访问（当前 PDF 和音频也可用）
 
 手机和电脑连接同一个 Wi-Fi：
 
-1. Vite 已配置 `host: true`，启动时会显示 `Network:` 地址。
-2. 在手机浏览器打开 `http://<电脑局域网IP>:5173`。
-3. `/api` 请求由 Vite 代理到电脑本机后端，后端不需要直接暴露。
+1. Vite 已配置 `host: true`，启动后显示 Network 地址。
+2. 手机浏览器打开 `http://<电脑局域网IP>:5173`。
+3. `/api` 请求由 Vite 代理到电脑本机后端。
 4. Windows 防火墙首次询问时只允许“专用网络”。
 
 注意：当前没有登录鉴权，**只能在可信局域网使用**，不要做端口转发。
@@ -148,13 +173,13 @@ npm run dev
 ## 测试
 
 ```powershell
-# 后端：坐标、PDF 提取、API、错误处理
+# 后端：坐标、PDF 提取、书籍 API、音频来源/缓存/API
 python -m pytest
 
 # Python 代码检查
 ruff check backend scripts
 
-# 前端坐标映射测试
+# 前端坐标和口音选项测试
 npm --prefix frontend test
 
 # 前端生产构建
@@ -163,13 +188,13 @@ npm --prefix frontend run build
 
 当前结果：
 
-- 后端：**23 passed**。
-- 前端坐标测试：**6 passed**。
+- 后端：**48 passed**。
+- 前端：**12 passed**（6 个坐标测试 + 6 个音频 UI 测试）。
 - 前端生产构建：成功。
 - Ruff：通过。
-- 浏览器端到端验证：真实 15 页论文和 4 页测试 PDF 均验证通过。
+- 浏览器端到端：真实 PDF 点读不回归；真实美式/英式录音播放、缓存、无音频提示均验证通过。
 
-详细的浏览器验收记录和未解决问题见 [docs/phase1-acceptance.md](docs/phase1-acceptance.md)。
+详细记录见 [docs/phase2-acceptance.md](docs/phase2-acceptance.md)。
 
 ## 目录结构
 
@@ -177,72 +202,81 @@ npm --prefix frontend run build
 vocabulary_audio/
 ├── AGENTS.md                     # 协作规则、技术选型、坐标契约、验收标准
 ├── README.md
-├── requirements.txt              # Phase 1 后端依赖
+├── requirements.txt              # Phase 1/2 后端依赖
 ├── requirements-dev.txt          # 测试/检查依赖
 ├── requirements-ocr.txt          # Phase 3 OCR 依赖（当前不需要安装）
-├── pyproject.toml                # pytest / ruff 配置
+├── pyproject.toml
 ├── backend/
 │   ├── app/
-│   │   ├── main.py               # FastAPI 入口、错误映射
-│   │   ├── config.py             # 数据目录和上传限制
+│   │   ├── main.py               # FastAPI 入口、统一错误映射
+│   │   ├── config.py             # 数据目录、上传限制、音频 User-Agent/代理设置
 │   │   ├── api/
-│   │   │   ├── health.py         # GET /api/health
-│   │   │   └── books.py          # 上传、文件、页面数据接口
+│   │   │   ├── health.py
+│   │   │   ├── books.py          # PDF 上传、文件、页面数据
+│   │   │   └── audio.py          # 单词音频查询和缓存文件
 │   │   ├── services/
-│   │   │   ├── books.py          # 本地存储、上传校验、页面编排
-│   │   │   ├── pdf_extractor.py  # PyMuPDF 单词/句子/坐标提取
-│   │   │   └── errors.py         # 用户可见错误
-│   │   └── models/schemas.py     # API 响应模型
-│   └── tests/                    # 23 个后端测试
+│   │   │   ├── books.py
+│   │   │   ├── pdf_extractor.py
+│   │   │   ├── audio_provider.py # Wikimedia Commons 候选/许可过滤
+│   │   │   ├── audio_service.py  # 选择、下载、缓存、并发锁
+│   │   │   ├── wikimedia_http.py # curl/urllib 传输、限流和重试
+│   │   │   └── errors.py
+│   │   └── models/schemas.py
+│   └── tests/                    # 48 个后端测试
 ├── frontend/
-│   ├── index.html                # 阅读界面
+│   ├── index.html
 │   ├── package.json
-│   ├── vite.config.js            # 端口和 /api 代理
+│   ├── vite.config.js
 │   ├── src/
-│   │   ├── main.js               # 文件选择、结果栏、工具栏
-│   │   ├── api/client.js         # 后端请求
-│   │   ├── pdf/viewer.js         # PDF.js 渲染和透明点击层
-│   │   ├── pdf/coordinates.js    # 归一化坐标 -> 百分比的纯函数
-│   │   ├── audio/simulatedAudio.js
+│   │   ├── main.js               # 文件选择、PDF 工具栏、音频结果栏
+│   │   ├── api/client.js
+│   │   ├── pdf/viewer.js
+│   │   ├── pdf/coordinates.js
+│   │   ├── audio/wordAudio.js    # 单音频元素、重复点击/取消/重播
+│   │   ├── audio/audioMeta.js    # 口音选项和来源文本
 │   │   └── styles/main.css
-│   └── tests/coordinates.test.js # Node 内置测试
+│   └── tests/                    # 坐标 + 音频 UI 单元测试
 ├── data/                         # 私人数据，全部被 Git 忽略
 │   ├── books/
 │   ├── photos/
-│   └── audio_cache/
+│   └── audio_cache/              # 真人录音缓存 + 许可元数据
 ├── docs/
 │   ├── environment.md
-│   └── phase1-acceptance.md
+│   ├── audio-source.md           # 音频来源评估与合规说明
+│   ├── phase1-acceptance.md
+│   └── phase2-acceptance.md
 └── scripts/check_env.py
 ```
 
 ## 坐标是怎么对齐的
 
-1. PyMuPDF 返回的是**未旋转页面坐标**。
-2. 后端用 `page.rotation_matrix` 转成实际显示方向，再除以页面宽高，得到 `0..1` 的归一化坐标。
-3. 前端把每个框的 `x0/y0/x1/y1` 转成相对页面容器的百分比。
-4. 页面 canvas、句子层和单词层在同一个定位容器中，一起缩放和滚动。
-5. 因此翻页、缩放、滚动都不需要写死屏幕坐标。
-
-后端有旋转 0/90/180/270 的坐标测试；前端有“页面尺寸变化后框仍按比例缩放”的测试；浏览器验证还对比了每个框在 canvas 中的相对位置与后端 bbox。
+1. PyMuPDF 返回未旋转页面坐标。
+2. 后端用 `page.rotation_matrix` 转成实际显示方向，再归一化到 `0..1`。
+3. 前端把归一化 bbox 转成相对页面容器的百分比。
+4. canvas、句子层、单词层在同一个定位容器中，一起缩放和滚动。
+5. 后端测试覆盖 0/90/180/270 度旋转；前端测试覆盖页面尺寸变化；浏览器验证对比了覆盖框与 canvas 的相对位置。
 
 ## 隐私与数据
 
-- 默认只监听 `127.0.0.1`，书籍、照片和识别文本不上传云端。
-- PDF 保存在 `data/books/`，照片将来保存在 `data/photos/`，都已被 `.gitignore` 忽略。
+- 默认只监听 `127.0.0.1`，PDF、照片和整页/整本内容不上传云端。
+- 为获取真人录音，只有**被点击的单词文本**会发送到 Wikimedia Commons API；已缓存单词不再发起网络请求。
+- PDF 保存在 `data/books/`，照片将来保存在 `data/photos/`，音频缓存保存在 `data/audio_cache/`；这些目录都被 `.gitignore` 忽略。
+- 缓存 JSON 包含来源 URL、许可证、作者、获取时间，便于审计和署名。
 - 日志只记录 ID、页码和错误信息，不记录书籍正文。
 - 请只处理你有权使用的书籍和照片；不要把受版权保护的文件提交到仓库。
-- PyMuPDF 采用 AGPL-3.0 或商业许可；个人本地使用没问题，将来分发或公开托管前需要复核。
+- PyMuPDF 采用 AGPL-3.0 或商业许可；个人本地使用通常没问题，分发或公开托管前需要复核。
 
 ## 已知限制
 
-- 句子播放目前需要点击句子内**单词之间的空白处**；直接点单词会播放单词。
-- 只有模拟提示音，没有真人发音。
-- 扫描版 PDF 会明确提示，但暂不支持 OCR。
-- RapidOCR/ONNX Runtime 尚未安装，照片功能留到 Phase 3。
-- PDF 文本提取和句子切分是启发式规则；复杂多栏、表格、跨行句子的效果还需要更多真实书籍验证。
-- 损坏或下载不完整的 PDF 会被拒绝；PDF.js 与 PyMuPDF 对异常文件的宽容度可能不同。
-- 浏览器自动化无法操作系统原生文件选择框；本次端到端测试通过文件输入的 `change` 事件和拖放路径验证，真实点击按钮选文件需要人工再确认一次。
+- 不是每个英文单词都有 Wikimedia Commons 录音；没有时只显示明确提示，不用 TTS 冒充。
+- 第一次获取某个词（或某个口音）需要联网；Wikimedia 可能限流，后端会按 `Retry-After` 等待并重试一次，页面显示“加载中”。成功后会缓存，之后立即播放。
+- 当前只支持单词音频；整句点击只显示文本，不播放音频。
+- 录音口音来自文件名，无法确定时显示“口音未标注”。
+- 当前开发环境曾出现 Python 系统代理出口被 Wikimedia 限流；默认用系统 `curl` 直连，必要时可用 `VOCABULARY_AUDIO_USE_PROXY=1` 切回系统代理。
+- 扫描版 PDF 只提示，不做 OCR。
+- 复杂多栏、表格、脚注、跨页句子的切分仍是启发式规则，需要更多真实书籍验证。
+- 原生文件选择框无法由自动化环境操作；已用文件输入 `change` 和拖放路径验证，仍建议人工点一次。
+- 音频缓存目前不会自动清理；缓存很小，但长期使用可增加清理策略。
 - 当前没有鉴权，不能公开部署。
 
 ## 路线图
@@ -250,18 +284,20 @@ vocabulary_audio/
 | 阶段 | 内容 | 状态 |
 | --- | --- | --- |
 | Phase 0 | 环境、规则、目录、README、健康检查 | 已完成 |
-| Phase 1 | PDF 上传 + 文本/坐标 + PDF.js 渲染 + 单词点击 + 模拟播放 + 翻页缩放滚动 | 已完成 |
-| Phase 2 | 例句切分/整句播放、阅读体验打磨 | 基础版已包含，继续打磨 |
+| Phase 1 | PDF 上传、坐标提取、PDF.js 渲染、单词点击、翻页/缩放/滚动 | 已完成 |
+| Phase 2 | 合法真人单词录音、来源/许可、口音选择、本地缓存 | 已完成 |
 | Phase 3 | 手机拍照/选图 + RapidOCR + 照片点击层 | 待开始 |
-| Phase 4 | 合法音频来源与缓存 | 后续 |
+| Phase 4 | 整句音频、合法音频扩展来源与缓存策略 | 后续 |
 | Phase 5 | EPUB、收藏、学习记录（SQLite） | 后续 |
 
 ## 相关文档
 
 - [AGENTS.md](AGENTS.md)：技术规则、坐标契约、隐私规则、验收标准。
-- [docs/environment.md](docs/environment.md)：当前环境和依赖状态。
-- [docs/phase1-acceptance.md](docs/phase1-acceptance.md)：本次测试结果、浏览器验收和未解决问题。
+- [docs/audio-source.md](docs/audio-source.md)：音频来源、许可、API 礼仪和替代方案。
+- [docs/environment.md](docs/environment.md)：环境和依赖状态。
+- [docs/phase1-acceptance.md](docs/phase1-acceptance.md)：PDF 点读验收。
+- [docs/phase2-acceptance.md](docs/phase2-acceptance.md)：真人发音与缓存验收。
 
 ## 许可证
 
-项目代码的许可证尚未确定。第三方依赖遵循各自许可证；仓库不包含书籍、照片或受版权保护的音频。
+项目代码的许可证尚未确定。第三方依赖遵循各自许可证；仓库不包含书籍、照片或音频文件。缓存的录音只存在于本机 `data/audio_cache/`，并保留来源和许可信息。

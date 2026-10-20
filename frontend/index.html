@@ -18,7 +18,7 @@
           <img class="brand-icon" src="/favicon.svg" alt="" width="40" height="40" />
           <div class="brand-copy">
             <h1>Vocabulary Audio</h1>
-            <p>PDF 原版页面点读 · Phase 1</p>
+            <p>PDF 原版页面点读 · 真人单词发音</p>
           </div>
         </div>
         <div class="topbar-actions">
@@ -62,8 +62,8 @@
           </article>
           <article>
             <span>03</span>
-            <h3>模拟发音</h3>
-            <p>本阶段暂用本地提示音和明显反馈，真人音频后续接入。</p>
+            <h3>真人录音</h3>
+            <p>单词发音来自 Wikimedia Commons，显示来源与许可，并缓存在本机。</p>
           </article>
         </div>
       </section>
@@ -122,14 +122,40 @@
           <div class="result-copy">
             <span class="result-label">当前识别</span>
             <strong id="recognized-text">点击页面上的英文单词</strong>
-            <span id="recognized-meta" class="result-meta">
-              点击单词读单词；点击句子内的空白处读整句
-            </span>
+            <div class="result-meta-row">
+              <span id="recognized-meta" class="result-meta">
+                点击单词播放 Wikimedia Commons 真人录音
+              </span>
+              <div id="accent-controls" class="accent-controls" hidden></div>
+            </div>
+            <div id="audio-source" class="audio-source" hidden>
+              <span>发音来源：</span>
+              <a
+                id="audio-source-link"
+                href="#"
+                target="_blank"
+                rel="noopener noreferrer"
+              >Wikimedia Commons</a>
+              <span>·</span>
+              <a
+                id="audio-license-link"
+                href="#"
+                target="_blank"
+                rel="noopener noreferrer"
+              ></a>
+              <span id="audio-attribution"></span>
+            </div>
           </div>
-          <div id="play-indicator" class="play-indicator">
-            <span class="play-bars" aria-hidden="true"><i></i><i></i><i></i></span>
-            <span id="play-text">模拟播放</span>
+          <div class="result-side">
+            <div id="play-indicator" class="play-indicator">
+              <span class="play-bars" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span id="play-text">真人发音</span>
+            </div>
+            <button id="replay-button" class="button small" type="button" hidden>
+              重播
+            </button>
           </div>
+          <audio id="word-audio" class="visually-hidden" preload="auto"></audio>
         </div>
       </section>
 

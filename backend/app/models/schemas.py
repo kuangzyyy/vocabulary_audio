@@ -46,3 +46,16 @@ class PageData(BaseModel):
     words: list[WordItem]
     lines: list[LineItem]
     sentences: list[SentenceItem]
+
+
+class WordAudioInfo(BaseModel):
+    word: str
+    accent: str
+    available_accents: list[str]
+    audio_url: str
+    source_page: str
+    provider: str
+    license: str
+    license_url: str | None = None
+    attribution: str | None = None
+    cached: bool

@@ -1,7 +1,8 @@
 import './styles/main.css';
 
 import { uploadPdf } from './api/client.js';
-import { playSimulatedTone } from './audio/simulatedAudio.js';
+import { accentLabel, accentOptions } from './audio/audioMeta.js';
+import { WordAudioController } from './audio/wordAudio.js';
 import { PdfViewer } from './pdf/viewer.js';
 
 function byId(id) {
@@ -39,7 +40,15 @@ const dom = {
   resultPanel: byId('result-panel'),
   recognizedText: byId('recognized-text'),
   recognizedMeta: byId('recognized-meta'),
+  accentControls: byId('accent-controls'),
+  audioSource: byId('audio-source'),
+  audioSourceLink: byId('audio-source-link'),
+  audioLicenseLink: byId('audio-license-link'),
+  audioAttribution: byId('audio-attribution'),
+  playIndicator: byId('play-indicator'),
   playText: byId('play-text'),
+  replayButton: byId('replay-button'),
+  wordAudio: byId('word-audio'),
   errorBanner: byId('error-banner'),
   errorText: byId('error-text'),
   errorClose: byId('error-close'),
@@ -47,10 +56,51 @@ const dom = {
 
 let activeBook = null;
 let fileBusy = false;
-let feedbackTimer = 0;
 let resizeTimer = 0;
 let activeHitElement = null;
 let renderedPage = 0;
+let currentWordText = '';
+let currentAudioMeta = null;
+
+const audioController = new WordAudioController(dom.wordAudio, {
+  onLoading: ({ accent }) => {
+    dom.recognizedMeta.textContent =
+      accent === 'auto'
+        ? '正在查找 Wikimedia Commons 真人录音…'
+        : `正在加载${accentLabel(accent)}真人录音…`;
+    setPlayState('loading', '加载中…');
+    disableAccentButtons(true);
+  },
+  onMeta: (metadata) => {
+    currentAudioMeta = metadata;
+    renderAudioMetadata(metadata);
+    dom.replayButton.hidden = false;
+    setPlayState('ready', metadata.cached ? '本地缓存' : '准备播放');
+  },
+  onPlaying: () => {
+    setPlayState('playing', '播放中…');
+  },
+  onEnded: () => {
+    setPlayState('ready', '播放完成');
+  },
+  onAutoplayBlocked: () => {
+    dom.recognizedMeta.textContent = '浏览器阻止了自动播放，请点击“重播”。';
+    setPlayState('ready', '点击重播');
+    dom.replayButton.hidden = false;
+  },
+  onFetchError: (error) => {
+    audioController.stop();
+    currentAudioMeta = null;
+    clearAudioDetails();
+    dom.recognizedMeta.textContent = audioErrorMessage(error);
+    setPlayState('error', '无音频');
+  },
+  onPlaybackError: (error) => {
+    dom.recognizedMeta.textContent = audioErrorMessage(error);
+    setPlayState('error', '播放失败');
+    dom.replayButton.hidden = !currentAudioMeta;
+  },
+});
 
 const viewer = new PdfViewer(
   {
@@ -63,12 +113,15 @@ const viewer = new PdfViewer(
   },
   {
     onWordClick: (word, element) => {
-      showRecognition(word.text, '单词', element);
+      handleWordClick(word, element);
     },
     onSentenceClick: (sentence, element) => {
-      showRecognition(sentence.text, '例句', element);
+      handleSentenceClick(sentence, element);
     },
     onPageLoading: (page, pageCount) => {
+      if (page !== renderedPage) {
+        resetResult('正在加载页面…');
+      }
       updatePageControls(page, pageCount);
       hideMessage();
     },
@@ -86,6 +139,7 @@ const viewer = new PdfViewer(
       }
     },
     onPageError: (message) => {
+      audioController.stop();
       showError(message);
     },
     onLoadingChange: (isLoading) => {
@@ -140,6 +194,7 @@ async function handleFile(file) {
     showError(requestErrorMessage(error));
     if (!viewer.hasDocument) {
       activeBook = null;
+      audioController.stop();
       dom.viewer.hidden = true;
       dom.emptyState.hidden = false;
     }
@@ -156,44 +211,148 @@ function requestErrorMessage(error) {
   return error?.message || '发生未知错误。';
 }
 
-function showRecognition(text, type, element) {
+function audioErrorMessage(error) {
+  if (error instanceof TypeError && /fetch|network/i.test(error.message)) {
+    return '无法连接本地后端，请确认服务已启动。';
+  }
+  return error?.message || '音频加载失败。';
+}
+
+function setActiveHit(element) {
   if (activeHitElement) {
     activeHitElement.classList.remove('is-active');
   }
   activeHitElement = element;
   element?.classList.add('is-active');
+}
 
-  dom.recognizedText.textContent = text;
-  dom.recognizedMeta.textContent = type;
-  dom.resultPanel.dataset.recognized = text;
-  dom.resultPanel.dataset.type = type;
+function handleWordClick(word, element) {
+  setActiveHit(element);
+  currentWordText = word.text;
+  currentAudioMeta = null;
+  dom.recognizedText.textContent = word.text;
+  dom.recognizedMeta.textContent = '正在查找 Wikimedia Commons 真人录音…';
+  dom.resultPanel.dataset.recognized = word.text;
+  dom.resultPanel.dataset.type = '单词';
+  clearAudioDetails();
+  setPlayState('loading', '加载中…');
+  void audioController.play(word.text, 'auto');
+}
 
-  dom.resultPanel.classList.remove('is-playing');
-  void dom.resultPanel.offsetWidth;
-  dom.resultPanel.classList.add('is-playing');
-  dom.playText.textContent = '模拟播放中…';
+function handleSentenceClick(sentence, element) {
+  audioController.stop();
+  setActiveHit(element);
+  currentWordText = '';
+  currentAudioMeta = null;
+  dom.recognizedText.textContent = sentence.text;
+  dom.recognizedMeta.textContent = '整句发音尚未接入；当前只支持单词真人录音。';
+  dom.resultPanel.dataset.recognized = sentence.text;
+  dom.resultPanel.dataset.type = '例句';
+  clearAudioDetails();
+  setPlayState('idle', '整句未接入');
+}
 
-  window.clearTimeout(feedbackTimer);
-  feedbackTimer = window.setTimeout(() => {
-    dom.resultPanel.classList.remove('is-playing');
-    dom.playText.textContent = '模拟播放完成';
-    activeHitElement?.classList.remove('is-active');
-    activeHitElement = null;
-  }, 1200);
+function renderAudioMetadata(metadata) {
+  const accent = metadata.accent;
+  dom.recognizedMeta.textContent =
+    `${accentLabel(accent)} · Wikimedia Commons 真人录音` +
+    (metadata.cached ? ' · 本地缓存' : '');
+  dom.resultPanel.dataset.audioAccent = accent;
+  dom.resultPanel.dataset.audioCached = metadata.cached ? 'true' : 'false';
 
-  playSimulatedTone(type === '例句' ? 'sentence' : 'word');
+  const { available, canChoose } = accentOptions(metadata);
+  dom.accentControls.replaceChildren();
+  if (canChoose) {
+    for (const option of ['us', 'uk']) {
+      if (!available.includes(option)) {
+        continue;
+      }
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'accent-button';
+      button.textContent = accentLabel(option);
+      button.setAttribute('aria-pressed', String(option === accent));
+      button.addEventListener('click', () => {
+        playAccent(option);
+      });
+      dom.accentControls.append(button);
+    }
+    dom.accentControls.hidden = false;
+  } else if (available.length > 0) {
+    const label = document.createElement('span');
+    label.className = 'accent-static';
+    label.textContent =
+      accent === 'unknown' ? '口音未标注' : `${accentLabel(accent)}发音`;
+    dom.accentControls.append(label);
+    dom.accentControls.hidden = false;
+  } else {
+    dom.accentControls.hidden = true;
+  }
+
+  const sourceUrl = safeHttpUrl(metadata.source_page);
+  if (!sourceUrl) {
+    dom.audioSource.hidden = true;
+    return;
+  }
+  dom.audioSource.hidden = false;
+  dom.audioSourceLink.href = sourceUrl;
+  dom.audioLicenseLink.href = safeHttpUrl(metadata.license_url) ?? sourceUrl;
+  dom.audioLicenseLink.textContent = metadata.license || '许可信息';
+  dom.audioAttribution.textContent = metadata.attribution
+    ? ` · ${metadata.attribution}`
+    : '';
+  dom.audioAttribution.title = metadata.attribution || '';
+}
+
+function playAccent(accent) {
+  if (!currentWordText) {
+    return;
+  }
+  dom.recognizedMeta.textContent = `正在加载${accentLabel(accent)}真人录音…`;
+  setPlayState('loading', '加载中…');
+  disableAccentButtons(true);
+  void audioController.play(currentWordText, accent);
+}
+
+function disableAccentButtons(disabled) {
+  for (const button of dom.accentControls.querySelectorAll('button')) {
+    button.disabled = disabled;
+  }
+}
+
+function clearAudioDetails() {
+  dom.accentControls.replaceChildren();
+  dom.accentControls.hidden = true;
+  dom.audioSource.hidden = true;
+  dom.audioSourceLink.removeAttribute('href');
+  dom.audioLicenseLink.removeAttribute('href');
+  dom.audioLicenseLink.textContent = '';
+  dom.audioAttribution.textContent = '';
+  dom.replayButton.hidden = true;
+  delete dom.resultPanel.dataset.audioAccent;
+  delete dom.resultPanel.dataset.audioCached;
+}
+
+function setPlayState(state, text) {
+  dom.playIndicator.classList.remove('is-loading', 'is-playing', 'is-error');
+  if (state === 'loading' || state === 'playing' || state === 'error') {
+    dom.playIndicator.classList.add(`is-${state}`);
+  }
+  dom.playText.textContent = text;
 }
 
 function resetResult(text = '点击页面上的英文单词') {
-  window.clearTimeout(feedbackTimer);
+  audioController.stop();
+  currentWordText = '';
+  currentAudioMeta = null;
   if (activeHitElement) {
     activeHitElement.classList.remove('is-active');
     activeHitElement = null;
   }
   dom.recognizedText.textContent = text;
-  dom.recognizedMeta.textContent = '点击单词读单词；点击句子内的空白处读整句';
-  dom.playText.textContent = '模拟播放';
-  dom.resultPanel.classList.remove('is-playing');
+  dom.recognizedMeta.textContent = '点击单词播放 Wikimedia Commons 真人录音';
+  clearAudioDetails();
+  setPlayState('idle', '真人发音');
   delete dom.resultPanel.dataset.recognized;
   delete dom.resultPanel.dataset.type;
 }
@@ -235,6 +394,20 @@ function showError(message) {
 function hideError() {
   dom.errorBanner.hidden = true;
   dom.errorText.textContent = '';
+}
+
+function safeHttpUrl(value) {
+  if (!value) {
+    return null;
+  }
+  try {
+    const url = new URL(value, window.location.origin);
+    return url.protocol === 'http:' || url.protocol === 'https:'
+      ? url.href
+      : null;
+  } catch {
+    return null;
+  }
 }
 
 dom.openFileButton.addEventListener('click', requestFilePicker);
@@ -300,6 +473,12 @@ dom.zoomOut.addEventListener('click', () => {
 });
 dom.fitWidth.addEventListener('click', () => {
   void viewer.fitToWidth();
+});
+
+dom.replayButton.addEventListener('click', () => {
+  if (currentAudioMeta) {
+    audioController.replay();
+  }
 });
 
 dom.errorClose.addEventListener('click', hideError);

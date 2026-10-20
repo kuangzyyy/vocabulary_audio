@@ -329,7 +329,7 @@ export class PdfViewer {
       element.dataset.sentenceId = word.sentence_id ?? '';
       element.dataset.bbox = JSON.stringify(word.bbox);
       element.setAttribute('aria-label', `播放单词：${word.text}`);
-      element.title = `${word.text}（点击模拟发音）`;
+      element.title = `${word.text}（点击播放真人发音）`;
 
       if (!applyBox(element, word.bbox)) {
         continue;

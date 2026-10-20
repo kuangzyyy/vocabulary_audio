@@ -39,6 +39,17 @@ export async function fetchPage(bookId, pageNumber) {
   return response.json();
 }
 
+export async function fetchWordAudio(word, accent = 'auto') {
+  const params = new URLSearchParams({ text: word, accent });
+  const response = await fetch(`/api/audio/word?${params}`, {
+    headers: { Accept: 'application/json' },
+  });
+  if (!response.ok) {
+    throw await toError(response);
+  }
+  return response.json();
+}
+
 export function bookFileUrl(bookId) {
   return `/api/books/${encodeURIComponent(bookId)}/file`;
 }

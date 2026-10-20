@@ -166,7 +166,13 @@ def main():
         report(path.is_dir(), relative, "present" if path.is_dir() else "missing")
 
     print()
-    print("Optional / not required by this stack")
+    print("Optional audio / external tools")
+    curl_text, _ = run_version("curl")
+    report(
+        curl_text is not None,
+        "curl",
+        curl_text or "not installed (urllib fallback)",
+    )
     tesseract_text, _ = run_version("tesseract")
     report(
         tesseract_text is not None,
