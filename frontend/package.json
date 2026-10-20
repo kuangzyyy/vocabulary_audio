@@ -1,0 +1,22 @@
+{
+  "name": "vocabulary-audio-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Local-first PDF and photo vocabulary reader frontend.",
+  "engines": {
+    "node": ">=22.13.0",
+    "npm": ">=10.0.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "pdfjs-dist": "6.4.299"
+  },
+  "devDependencies": {
+    "vite": "8.3.4"
+  }
+}
