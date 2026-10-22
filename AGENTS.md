@@ -58,6 +58,7 @@
 - 后端 83 个测试、前端 24 个测试（新增 12 个 EPUB 文本/目录测试）、Ruff 和构建通过。
 - 修复 EPUB 点击后结果栏高度变化触发整章重排、导致 iframe 高亮丢失的问题；只在阅读区宽度变化时 resize。
 - 修复恢复旧内容后错误横幅残留到下一次点读的问题。
+- 新增 Windows 一键启动/停止脚本：自动启动后端和本机 Vite、等待健康检查并用 Edge/Chrome 应用窗口打开；日志写入 `logs/`。
 - 真实浏览器验收见 [docs/phase6-acceptance.md](docs/phase6-acceptance.md)。
 
 尚未验证：
@@ -225,6 +226,8 @@
 vocabulary_audio/
 ├── AGENTS.md                 # 本文件：协作规则、技术选型、验收标准
 ├── README.md                 # 面向初学者的安装、启动和使用说明
+├── start-vocabulary-audio.bat # Windows 一键启动
+├── stop-vocabulary-audio.bat  # Windows 一键停止
 ├── .gitignore                # 阻止环境、缓存、私人数据和密钥入库
 ├── requirements.txt          # 后端核心运行依赖
 ├── requirements-dev.txt      # 测试与代码检查依赖
@@ -269,6 +272,8 @@ vocabulary_audio/
 │   └── phase6-acceptance.md  # Phase 6 EPUB 阅读与点读验收记录
 └── scripts/
     ├── check_env.py          # 随时重新检查本机环境
+    ├── start_vocabulary_audio.ps1 # 一键启动实现
+    ├── stop_vocabulary_audio.ps1  # 一键停止实现
     └── tts_sapi.ps1          # Windows SAPI 本机整句语音合成
 ```
 
@@ -509,6 +514,8 @@ y 轴：向下
 
 ## 10. 常用命令（目标环境：Python 3.12）
 
+日常启动优先双击项目根目录的 `start-vocabulary-audio.bat`：它会启动后端和本机 Vite、等待健康检查并打开浏览器；停止用 `stop-vocabulary-audio.bat`。日志写入 `logs/`。一键启动默认只监听 `127.0.0.1`，手机访问仍需按下方命令手动启动 Vite。
+
 ```powershell
 # 1. 创建并激活虚拟环境（在项目根目录）
 py -3.12 -m venv .venv
@@ -743,3 +750,4 @@ python scripts/check_env.py
 - **2026-10-20**：完成 Phase 5；对 PDF/照片/音频/布局做桌面与移动回归，验证异常文件、大小限制、网络失败和日志脱敏；修复照片替换失败后的标题/尺寸残留；新增 4 个日志脱敏测试（后端 71 个测试），前端 12 个测试、Ruff 和构建通过；测试报告见 `docs/phase5-test-report.md`。真实手机相机、原生文件选择框和真实多点触控仍需人工验收。
 - **2026-10-20**：完成 Phase 6；新增 EPUB 上传/容器校验/文件服务、EPUB.js 阅读器、目录/翻章、字号重排、iframe 内取词和句子切分、PDF/EPUB/照片互切；后端 83 个测试、前端 24 个测试、Ruff 和构建通过；验收记录见 `docs/phase6-acceptance.md`。真实手机、DRM/固定版式 EPUB 仍需人工验收。
 - **2026-10-20**：修复 EPUB 点击高亮被结果栏高度变化触发的重排清空、错误横幅残留、以及首次 location 未知时 resize 导致空白阅读区的问题；宽度变化仍会触发手机重排。
+- **2026-10-20**：新增 Windows 一键启动/停止脚本（检查环境、后台启动后端和本机 Vite、健康检查、浏览器应用窗口、日志）；一键启动不改变 `data/` 或用户文件。

@@ -11,6 +11,21 @@
 >
 > 尚未实现：真人整句录音、收藏和学习记录。真实手机相机、原生文件选择框和真实多点触控仍需人工验收。
 
+## 一键启动（Windows）
+
+完成一次依赖安装后，**双击项目根目录的 `start-vocabulary-audio.bat`** 即可：
+
+1. 检查 `.venv`、前端依赖和端口占用。
+2. 在后台启动本机后端和 Vite。
+3. 等待服务就绪，自动用 Edge/Chrome 的应用窗口打开 <http://127.0.0.1:5173/>。
+4. 日志写入 `logs/backend.*.log` 和 `logs/frontend.*.log`。
+
+停止服务：双击 `stop-vocabulary-audio.bat`。它只停止本项目的 Uvicorn/Vite 进程，不会删除 `data/` 中的书籍、EPUB、照片或音频缓存。
+
+想从桌面启动，可以右键 `start-vocabulary-audio.bat` →“发送到”→“桌面快捷方式”，以后双击桌面图标即可。
+
+一键启动默认只监听本机 `127.0.0.1`，适合桌面使用。如果要用手机访问，请按下面“手机访问”一节手动启动 Vite（`host: true`）。如果脚本提示依赖缺失，先按“安装”一节完成 `.venv` 和 `npm install`。
+
 ## 现在能做什么
 
 ### EPUB
@@ -303,6 +318,8 @@ npm --prefix frontend run build
 vocabulary_audio/
 ├── AGENTS.md                     # 协作规则、技术选型、坐标契约、验收标准
 ├── README.md
+├── start-vocabulary-audio.bat    # Windows 一键启动
+├── stop-vocabulary-audio.bat     # Windows 一键停止
 ├── requirements.txt              # 后端运行依赖
 ├── requirements-dev.txt          # 测试/检查依赖
 ├── requirements-ocr.txt          # 照片 OCR 依赖（已安装）
@@ -362,6 +379,8 @@ vocabulary_audio/
 │   └── phase6-acceptance.md
 └── scripts/
     ├── check_env.py
+    ├── start_vocabulary_audio.ps1 # 一键启动实现
+    ├── stop_vocabulary_audio.ps1  # 一键停止实现
     └── tts_sapi.ps1              # Windows SAPI 本机语音合成
 ```
 
